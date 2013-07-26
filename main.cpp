@@ -1,103 +1,319 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
+
 #include <GL/glew.h>
 #include <GL/glut.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "shader_utils.h"
-#include "res_texture.c"
 
-GLuint program;
-GLint attribute_coord3d, attribute_v_color, attribute_texcoord, uniform_mvp, uniform_mytexture;
-GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements;
-GLuint texture_id;
-int screen_width=800, screen_height=600;
+#include "shader_utils.h"
+
+static GLuint program;
+static GLint attribute_coord, uniform_mvp, uniform_texture;
+static GLuint texture;
+static int screen_width=800, screen_height=600;
+
+static glm::vec3 position;
+static glm::vec3 forward;
+static glm::vec3 right;
+static glm::vec3 up;
+static glm::vec3 lookat;
+static glm::vec3 angle;
+
+static int ww, wh;
+static int mx, my, mz;
+static int face;
+
+static time_t now;
+static unsigned int keys;
+
+// Size of chunk
+#define CX 16
+#define CY 32
+#define CZ 16
+
+typedef glm::detail::tvec4<GLbyte> byte4;
+
+struct chunk {
+  uint8_t blk[CX][CY][CZ];
+  struct chunk *left, *right, *below, *above, *front, *back;
+  int slot;
+  GLuint vbo;
+  int elements;
+  time_t lastused;
+  bool changed;
+  bool initialized;
+  int ax, ay, az;
+
+  chunk(): ax(0), ay(0), az(0) {
+    memset(blk, 0, sizeof blk);
+    left = right = below = above = front = back = 0;
+    lastused = now;
+    changed = true;
+    initialized = false;
+  }
+
+  chunk(int x, int y, int z): ax(x), ay(y), az(z) {
+    memset(blk, 0, sizeof blk);
+    left = right = below = above = front = back = 0;
+    lastused = now;
+    changed = true;
+    initialized = false;
+  }
+
+  uint8_t get(int x, int y, int z) const {
+    if(x < 0)
+      return left ? left->blk[x + CX][y][z] : 0;
+    if(x >= CX)
+      return right ? right->blk[x - CX][y][z] : 0;
+    if(y < 0)
+      return below ? below->blk[x][y + CY][z] : 0;
+    if(y >= CY)
+      return above ? above->blk[x][y - CY][z] : 0;
+    if(z < 0)
+      return front ? front->blk[x][y][z + CZ] : 0;
+    if(z >= CZ)
+      return back ? back->blk[x][y][z - CZ] : 0;
+    return blk[x][y][z];
+  }
+
+  bool isblocked(int x1, int y1, int z1, int x2, int y2, int z2) {
+    if(!blk[x1][y1][z1])
+      return true;
+  }
+
+  void set(int x, int y, int z, uint8_t type) {
+    blk[x][y][z] = type;
+    changed = true;
+  }
+
+	void update() {
+		byte4 vertex[CX * CY * CZ * 18];
+		int i = 0;
+		int merged = 0;
+		bool vis = false;
+
+		// View from negative x
+
+		for(int x = CX - 1; x >= 0; x--) {
+			for(int y = 0; y < CY; y++) {
+				for(int z = 0; z < CZ; z++) {
+					// Line of sight blocked?
+					if(isblocked(x, y, z, x - 1, y, z)) {
+						vis = false;
+						continue;
+					}
+
+					uint8_t side = blk[x][y][z];
+
+					// Same block as previous one? Extend it.
+					if(vis && z != 0 && blk[x][y][z] == blk[x][y][z - 1]) {
+						vertex[i - 5] = byte4(x, y, z + 1, side);
+						vertex[i - 2] = byte4(x, y, z + 1, side);
+						vertex[i - 1] = byte4(x, y + 1, z + 1, side);
+						merged++;
+					// Otherwise, add a new quad.
+					} else {
+						vertex[i++] = byte4(x, y, z, side);
+						vertex[i++] = byte4(x, y, z + 1, side);
+						vertex[i++] = byte4(x, y + 1, z, side);
+						vertex[i++] = byte4(x, y + 1, z, side);
+						vertex[i++] = byte4(x, y, z + 1, side);
+						vertex[i++] = byte4(x, y + 1, z + 1, side);
+					}
+					
+					vis = true;
+				}
+			}
+		}
+
+		// View from positive x
+
+		for(int x = 0; x < CX; x++) {
+			for(int y = 0; y < CY; y++) {
+				for(int z = 0; z < CZ; z++) {
+					if(isblocked(x, y, z, x + 1, y, z)) {
+						vis = false;
+						continue;
+					}
+
+					uint8_t side = blk[x][y][z];
+
+					if(vis && z != 0 && blk[x][y][z] == blk[x][y][z - 1]) {
+						vertex[i - 4] = byte4(x + 1, y, z + 1, side);
+						vertex[i - 2] = byte4(x + 1, y + 1, z + 1, side);
+						vertex[i - 1] = byte4(x + 1, y, z + 1, side);
+						merged++;
+					} else {
+						vertex[i++] = byte4(x + 1, y, z, side);
+						vertex[i++] = byte4(x + 1, y + 1, z, side);
+						vertex[i++] = byte4(x + 1, y, z + 1, side);
+						vertex[i++] = byte4(x + 1, y + 1, z, side);
+						vertex[i++] = byte4(x + 1, y + 1, z + 1, side);
+						vertex[i++] = byte4(x + 1, y, z + 1, side);
+					}
+					vis = true;
+				}
+			}
+		}
+
+		// View from negative y
+
+		for(int x = 0; x < CX; x++) {
+			for(int y = CY - 1; y >= 0; y--) {
+				for(int z = 0; z < CZ; z++) {
+					if(isblocked(x, y, z, x, y - 1, z)) {
+						vis = false;
+						continue;
+					}
+
+					uint8_t bottom = blk[x][y][z];
+
+					if(vis && z != 0 && blk[x][y][z] == blk[x][y][z - 1]) {
+						vertex[i - 4] = byte4(x, y, z + 1, bottom + 128);
+						vertex[i - 2] = byte4(x + 1, y, z + 1, bottom + 128);
+						vertex[i - 1] = byte4(x, y, z + 1, bottom + 128);
+						merged++;
+					} else {
+						vertex[i++] = byte4(x, y, z, bottom + 128);
+						vertex[i++] = byte4(x + 1, y, z, bottom + 128);
+						vertex[i++] = byte4(x, y, z + 1, bottom + 128);
+						vertex[i++] = byte4(x + 1, y, z, bottom + 128);
+						vertex[i++] = byte4(x + 1, y, z + 1, bottom + 128);
+						vertex[i++] = byte4(x, y, z + 1, bottom + 128);
+					}
+					vis = true;
+				}
+			}
+		}
+
+		// View from positive y
+
+		for(int x = 0; x < CX; x++) {
+			for(int y = 0; y < CY; y++) {
+				for(int z = 0; z < CZ; z++) {
+					if(isblocked(x, y, z, x, y + 1, z)) {
+						vis = false;
+						continue;
+					}
+
+					uint8_t top = blk[x][y][z];
+
+					if(vis && z != 0 && blk[x][y][z] == blk[x][y][z - 1]) {
+						vertex[i - 5] = byte4(x, y + 1, z + 1, top + 128);
+						vertex[i - 2] = byte4(x, y + 1, z + 1, top + 128);
+						vertex[i - 1] = byte4(x + 1, y + 1, z + 1, top + 128);
+						merged++;
+					} else {
+						vertex[i++] = byte4(x, y + 1, z, top + 128);
+						vertex[i++] = byte4(x, y + 1, z + 1, top + 128);
+						vertex[i++] = byte4(x + 1, y + 1, z, top + 128);
+						vertex[i++] = byte4(x + 1, y + 1, z, top + 128);
+						vertex[i++] = byte4(x, y + 1, z + 1, top + 128);
+						vertex[i++] = byte4(x + 1, y + 1, z + 1, top + 128);
+					}
+					vis = true;
+				}
+			}
+		}
+
+		// View from negative z
+
+		for(int x = 0; x < CX; x++) {
+			for(int z = CZ - 1; z >= 0; z--) {
+				for(int y = 0; y < CY; y++) {
+					if(isblocked(x, y, z, x, y, z - 1)) {
+						vis = false;
+						continue;
+					}
+
+					uint8_t side = blk[x][y][z];
+
+					if(vis && y != 0 && blk[x][y][z] == blk[x][y - 1][z]) {
+						vertex[i - 5] = byte4(x, y + 1, z, side);
+						vertex[i - 3] = byte4(x, y + 1, z, side);
+						vertex[i - 2] = byte4(x + 1, y + 1, z, side);
+						merged++;
+					} else {
+						vertex[i++] = byte4(x, y, z, side);
+						vertex[i++] = byte4(x, y + 1, z, side);
+						vertex[i++] = byte4(x + 1, y, z, side);
+						vertex[i++] = byte4(x, y + 1, z, side);
+						vertex[i++] = byte4(x + 1, y + 1, z, side);
+						vertex[i++] = byte4(x + 1, y, z, side);
+					}
+					vis = true;
+				}
+			}
+		}
+
+		// View from positive z
+
+		for(int x = 0; x < CX; x++) {
+			for(int z = 0; z < CZ; z++) {
+				for(int y = 0; y < CY; y++) {
+					if(isblocked(x, y, z, x, y, z + 1)) {
+						vis = false;
+						continue;
+					}
+
+					uint8_t side = blk[x][y][z];
+
+					if(vis && y != 0 && blk[x][y][z] == blk[x][y - 1][z]) {
+						vertex[i - 4] = byte4(x, y + 1, z + 1, side);
+						vertex[i - 3] = byte4(x, y + 1, z + 1, side);
+						vertex[i - 1] = byte4(x + 1, y + 1, z + 1, side);
+						merged++;
+					} else {
+						vertex[i++] = byte4(x, y, z + 1, side);
+						vertex[i++] = byte4(x + 1, y, z + 1, side);
+						vertex[i++] = byte4(x, y + 1, z + 1, side);
+						vertex[i++] = byte4(x, y + 1, z + 1, side);
+						vertex[i++] = byte4(x + 1, y, z + 1, side);
+						vertex[i++] = byte4(x + 1, y + 1, z + 1, side);
+					}
+					vis = true;
+				}
+			}
+		}
+
+		changed = false;
+		elements = i;
+
+		// If this chunk is empty, no need to allocate a chunk slot.
+		if(!elements)
+			return;
+
+    glGenBuffers(1, &vbo);
+
+		// Upload vertices
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, i * sizeof *vertex, vertex, GL_STATIC_DRAW);
+	}
+
+	void render(const glm::mat4 &pv) {
+		if(changed)
+			update();
+
+		lastused = now;
+
+		if(!elements)
+			return;
+
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glVertexAttribPointer(attribute_coord, 4, GL_BYTE, GL_FALSE, 0, 0);
+		glDrawArrays(GL_TRIANGLES, 0, elements);
+	}
+};
+
+static chunk *world;
 
 int init_resources(void)
 {
-  GLfloat cube_vertices[] = {
-    // front
-    -1.0, -1.0, 1.0,
-    1.0, -1.0, 1.0,
-    1.0, 1.0, 1.0,
-    -1.0, 1.0, 1.0,
-    // top
-    -1.0, 1.0, 1.0,
-    1.0, 1.0, 1.0,
-    1.0, 1.0, -1.0,
-    -1.0, 1.0, -1.0,
-    // back
-    1.0, -1.0, -1.0,
-    -1.0, -1.0, -1.0,
-    -1.0, 1.0, -1.0,
-    1.0, 1.0, -1.0,
-    // bottom
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, -1.0,
-    1.0, -1.0, 1.0,
-    -1.0, -1.0, 1.0,
-    // left
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0, 1.0,
-    -1.0, 1.0, 1.0,
-    -1.0, 1.0, -1.0,
-    // right
-    1.0, -1.0, 1.0,
-    1.0, -1.0, -1.0,
-    1.0, 1.0, -1.0,
-    1.0, 1.0, 1.0,
-  };
-  glGenBuffers(1, &vbo_cube_vertices);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-
-
-  GLfloat cube_texcoords[2*4*6] = {
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-  };
-  for (int i = 1; i < 6; i++)
-    memcpy(&cube_texcoords[i*4*2], &cube_texcoords[0], 2*4*sizeof(GLfloat));
-  glGenBuffers(1, &vbo_cube_texcoords);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_texcoords);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(cube_texcoords), cube_texcoords, GL_STATIC_DRAW);
-
-
-  GLushort cube_elements[] = {
-    0, 1, 2,
-    2, 3, 0,
-    4, 5, 6,
-    6, 7, 4,
-    8, 9, 10,
-    10, 11, 8,
-    12, 13, 14,
-    14, 15, 12,
-    16, 17, 18,
-    18, 19, 16,
-    20, 21, 22,
-    22, 23, 20,
-  };
-  glGenBuffers(1, &ibo_cube_elements);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_elements);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_elements), cube_elements, GL_STATIC_DRAW);
-
-  glGenTextures(1, &texture_id);
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D,
-               0,
-               GL_RGB,
-               res_texture.width,
-               res_texture.height,
-               0,
-               GL_RGB,
-               GL_UNSIGNED_BYTE,
-               res_texture.pixel_data);
-
   GLint link_ok = GL_FALSE;
 
   GLuint vs, fs;
@@ -115,20 +331,6 @@ int init_resources(void)
     return 0;
   }
 
-  const char* attribute_name = "coord3d";
-  attribute_coord3d = glGetAttribLocation(program, attribute_name);
-  if (attribute_coord3d == -1) {
-    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
-    return 0;
-  }
-
-  attribute_name = "texcoord";
-  attribute_texcoord = glGetAttribLocation(program, attribute_name);
-  if (attribute_texcoord == -1) {
-    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
-    return 0;
-  }
-
   const char* uniform_name;
   uniform_name = "mvp";
   uniform_mvp = glGetUniformLocation(program, uniform_name);
@@ -136,6 +338,12 @@ int init_resources(void)
     fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
     return 0;
   }
+
+  world = new chunk;
+
+  glUseProgram(program);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glEnable(GL_CULL_FACE);
 
   return 1;
 }
@@ -156,61 +364,32 @@ void onIdle() {
   glutPostRedisplay();
 }
 
-void onReshape(int width, int height) {
+void reshape(int width, int height) {
   screen_width = width;
   screen_height = height;
   glViewport(0, 0, screen_width, screen_height);
 }
 
-void onDisplay()
+static void display()
 {
-  glClearColor(0.0, 0.0, 0.0, 1.0);
+  glm::mat4 view = glm::lookAt(position, position + lookat, up);
+  glm::mat4 projection = glm::perspective(45.0f, 1.0f*ww/wh, 0.01f, 1000.0f);
+  glm::mat4 mvp = projection * view;
+
+  glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
+
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_POLYGON_OFFSET_FILL);
 
-  glUseProgram(program);
-  glEnableVertexAttribArray(attribute_coord3d);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
-  glVertexAttribPointer(
-                        attribute_coord3d,
-                        3,
-                        GL_FLOAT,
-                        GL_FALSE,
-                        0,
-                        0
-                        );
+  world->render(mvp);
 
-  glEnableVertexAttribArray(attribute_texcoord);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_texcoords);
-  glVertexAttribPointer(
-                        attribute_texcoord,
-                        2,
-                        GL_FLOAT,
-                        GL_FALSE,
-                        0,
-                        0
-                        );
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_elements);
-  int size;
-  glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-  glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
-
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-  glUniform1i(uniform_mytexture, 0);
-
-  glDisableVertexAttribArray(attribute_coord3d);
-  glDisableVertexAttribArray(attribute_v_color);
   glutSwapBuffers();
 }
 
 void free_resources()
 {
   glDeleteProgram(program);
-  glDeleteBuffers(1, &vbo_cube_vertices);
-  glDeleteBuffers(1, &vbo_cube_colors);
-  glDeleteBuffers(1, &ibo_cube_elements);
-  glDeleteTextures(1, &texture_id);
 }
 
 int main(int argc, char* argv[])
@@ -228,12 +407,9 @@ int main(int argc, char* argv[])
 
   if (1 == init_resources())
     {
-      glutDisplayFunc(onDisplay);
-      glutIdleFunc(onIdle);
-      glutReshapeFunc(onReshape);
-      glEnable(GL_BLEND);
-      glEnable(GL_DEPTH_TEST);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glutDisplayFunc(display);
+      glutIdleFunc(display);
+      glutReshapeFunc(reshape);
       glutMainLoop();
     }
 
