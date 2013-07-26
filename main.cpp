@@ -1,103 +1,56 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
-#include "res_texture.c"
 
 GLuint program;
-GLint attribute_coord3d, attribute_v_color, attribute_texcoord, uniform_mvp, uniform_mytexture;
-GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements;
-GLuint texture_id;
+GLint attribute_v_coord, attribute_v_normal, uniform_mvp;
+GLuint vbo_mesh_vertices, vbo_mesh_normals, ibo_mesh_elements;
 int screen_width=800, screen_height=600;
 
+void load_obj(const char* filename, std::vector<glm::vec4> &vertices, std::vector<glm::vec3> &normals, std::vector<GLushort> &elements) {
+  std::ifstream in(filename, std::ios::in);
+  if (!in) { std::cerr << "Cannot open " << filename << std::endl; exit(1); }
+
+  std::string line;
+  while (getline(in, line)) {
+    if (line.substr(0,2) == "v ") {
+      std::istringstream s(line.substr(2));
+      glm::vec4 v; s >> v.x; s >> v.y; s >> v.z; v.w = 1.0f;
+      vertices.push_back(v);
+    } else if (line.substr(0,2) == "f ") {
+      std::istringstream s(line.substr(2));
+      GLushort a,b,c;
+      s >> a; s >> b; s >> c;
+      a--; b--; c--;
+      elements.push_back(a); elements.push_back(b); elements.push_back(c);
+    }
+    else if (line[0] == '#') {}
+    else {}
+  }
+
+  // normals.resize(mesh->vertices.size(), glm::vec3(0.0, 0.0, 0.0));
+  for (int i = 0; i < elements.size(); i+=3) {
+    GLushort ia = elements[i];
+    GLushort ib = elements[i+1];
+    GLushort ic = elements[i+2];
+    glm::vec3 normal = glm::normalize(glm::cross(glm::vec3(vertices[ib]) - glm::vec3(vertices[ia]),
+                                                 glm::vec3(vertices[ic]) - glm::vec3(vertices[ia])));
+    normals[ia] = normals[ib] = normals[ic] = normal;
+  }
+}
+                                                 
 int init_resources(void)
 {
-  GLfloat cube_vertices[] = {
-    // front
-    -1.0, -1.0, 1.0,
-    1.0, -1.0, 1.0,
-    1.0, 1.0, 1.0,
-    -1.0, 1.0, 1.0,
-    // top
-    -1.0, 1.0, 1.0,
-    1.0, 1.0, 1.0,
-    1.0, 1.0, -1.0,
-    -1.0, 1.0, -1.0,
-    // back
-    1.0, -1.0, -1.0,
-    -1.0, -1.0, -1.0,
-    -1.0, 1.0, -1.0,
-    1.0, 1.0, -1.0,
-    // bottom
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, -1.0,
-    1.0, -1.0, 1.0,
-    -1.0, -1.0, 1.0,
-    // left
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0, 1.0,
-    -1.0, 1.0, 1.0,
-    -1.0, 1.0, -1.0,
-    // right
-    1.0, -1.0, 1.0,
-    1.0, -1.0, -1.0,
-    1.0, 1.0, -1.0,
-    1.0, 1.0, 1.0,
-  };
-  glGenBuffers(1, &vbo_cube_vertices);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
-
-
-  GLfloat cube_texcoords[2*4*6] = {
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-  };
-  for (int i = 1; i < 6; i++)
-    memcpy(&cube_texcoords[i*4*2], &cube_texcoords[0], 2*4*sizeof(GLfloat));
-  glGenBuffers(1, &vbo_cube_texcoords);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_texcoords);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(cube_texcoords), cube_texcoords, GL_STATIC_DRAW);
-
-
-  GLushort cube_elements[] = {
-    0, 1, 2,
-    2, 3, 0,
-    4, 5, 6,
-    6, 7, 4,
-    8, 9, 10,
-    10, 11, 8,
-    12, 13, 14,
-    14, 15, 12,
-    16, 17, 18,
-    18, 19, 16,
-    20, 21, 22,
-    22, 23, 20,
-  };
-  glGenBuffers(1, &ibo_cube_elements);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_elements);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_elements), cube_elements, GL_STATIC_DRAW);
-
-  glGenTextures(1, &texture_id);
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D,
-               0,
-               GL_RGB,
-               res_texture.width,
-               res_texture.height,
-               0,
-               GL_RGB,
-               GL_UNSIGNED_BYTE,
-               res_texture.pixel_data);
-
   GLint link_ok = GL_FALSE;
 
   GLuint vs, fs;
@@ -112,20 +65,6 @@ int init_resources(void)
   if (!link_ok) {
     fprintf(stderr, "glLinkProgram:");
     print_log(program);
-    return 0;
-  }
-
-  const char* attribute_name = "coord3d";
-  attribute_coord3d = glGetAttribLocation(program, attribute_name);
-  if (attribute_coord3d == -1) {
-    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
-    return 0;
-  }
-
-  attribute_name = "texcoord";
-  attribute_texcoord = glGetAttribLocation(program, attribute_name);
-  if (attribute_texcoord == -1) {
-    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
     return 0;
   }
 
@@ -168,10 +107,27 @@ void onDisplay()
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
   glUseProgram(program);
-  glEnableVertexAttribArray(attribute_coord3d);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+
+  std::vector<glm::vec4> monkey_vertices;
+  std::vector<glm::vec3> monkey_normals;
+  std::vector<GLushort> monkey_elements;
+
+  load_obj("monkey.obj", monkey_vertices, monkey_normals, monkey_elements);
+
+  glEnableVertexAttribArray(attribute_v_coord);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_mesh_vertices);
   glVertexAttribPointer(
-                        attribute_coord3d,
+                        attribute_v_coord,
+                        4,
+                        GL_FLOAT,
+                        GL_FALSE,
+                        0,
+                        0
+                        );
+
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_mesh_normals);
+  glVertexAttribPointer(
+                        attribute_v_normal,
                         3,
                         GL_FLOAT,
                         GL_FALSE,
@@ -179,38 +135,20 @@ void onDisplay()
                         0
                         );
 
-  glEnableVertexAttribArray(attribute_texcoord);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_texcoords);
-  glVertexAttribPointer(
-                        attribute_texcoord,
-                        2,
-                        GL_FLOAT,
-                        GL_FALSE,
-                        0,
-                        0
-                        );
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_elements);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_mesh_elements);
   int size;
   glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
   glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, texture_id);
-  glUniform1i(uniform_mytexture, 0);
-
-  glDisableVertexAttribArray(attribute_coord3d);
-  glDisableVertexAttribArray(attribute_v_color);
+  glDisableVertexAttribArray(attribute_v_coord);
   glutSwapBuffers();
 }
 
 void free_resources()
 {
   glDeleteProgram(program);
-  glDeleteBuffers(1, &vbo_cube_vertices);
-  glDeleteBuffers(1, &vbo_cube_colors);
-  glDeleteBuffers(1, &ibo_cube_elements);
-  glDeleteTextures(1, &texture_id);
+  glDeleteBuffers(1, &vbo_mesh_vertices);
+  glDeleteBuffers(1, &vbo_mesh_normals);
 }
 
 int main(int argc, char* argv[])
