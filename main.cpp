@@ -15,7 +15,9 @@ GLint attribute_coord3d, attribute_v_color, attribute_texcoord, uniform_mvp;
 GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, elementbuffer;
 std::vector<GLushort> indices;
 int screen_width=800, screen_height=600;
-int sizeOfMesh = 0;
+int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
+int arcball_on = false;
+glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
 
 struct PackedVertex{
   glm::vec3 pos;
@@ -76,9 +78,9 @@ void stupidMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices)
 {
   int x[] = { 0, 0, 0 };
   int n = 0;
-  for(x[2]=0; x[2]<dimensions[2]; x[2]++) {
-    for(x[1]=0; x[1]<dimensions[1]; x[1]++) {
-      for(x[0]=0; x[0]<dimensions[0]; x[0]++) {
+  for(x[2]=-dimensions[2]/2; x[2]<dimensions[2]/2; x[2]++) {
+    for(x[1]=-dimensions[1]/2; x[1]<dimensions[1]/2; x[1]++) {
+      for(x[0]=-dimensions[0]/2; x[0]<dimensions[0]/2; x[0]++) {
         if(volume[n] == 1) {
 
           for(int d=0; d < 3; d++) {
@@ -110,7 +112,6 @@ void makeVoxels(int *l, int *h, int (*f)(int, int, int), int *volume) {
     for(int j=l[1]; j<h[1]; j++) {
       for(int i=l[0]; i<h[0]; i++) {
         volume[n] = (*f)(i,j,k);
-        // fprintf(stderr, "n: %i, func: %i", n, volume[n]);
         n++;
       }
     }
@@ -126,7 +127,7 @@ int hole_func(int i, int j, int k) {
 }
 
 int hill_func(int i, int j, int k) {
-  if (j <= 16 * exp(-(i*i + k*k) / 64))
+  if (j <= 16 * exp(-(i*i + k*k) / 64.0))
     return 1;
 }
 
@@ -157,9 +158,6 @@ int init_resources(void)
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
-
-  // for(int i=0; i<indices.size(); i++)
-  //   fprintf(stderr, "Index: %d, x: %f, y: %f, z: %f\n", indices[i], indexed_vertices[indices[i]].x, indexed_vertices[indices[i]].y, indexed_vertices[indices[i]].z);
 
   glGenBuffers(1, &elementbuffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
@@ -200,16 +198,37 @@ int init_resources(void)
   return 1;
 }
 
+glm::vec3 get_arcball_vector(int x, int y)
+{
+  glm::vec3 P = glm::vec3(1.0*x/screen_width*2 - 1.0,
+                          1.0*y/screen_height*2 - 1.0,
+                          0);
+  P.y = -P.y;
+  float OP_squared = P.x * P.x + P.y * P.y;
+  if (OP_squared <= 1*1)
+    P.z = sqrt(1*1 - OP_squared);
+  else
+    P = glm::normalize(P);
+  return P;
+}
+
 void onIdle() {
-  float angle = glutGet(GLUT_ELAPSED_TIME) / 1000.0 * 15;
-  glm::mat4 anim = \
-    glm::rotate(glm::mat4(1.0f), angle*3.0f, glm::vec3(1, 0, 0)) *
-    glm::rotate(glm::mat4(1.0f), angle*2.0f, glm::vec3(0, 1, 0)) *
-    glm::rotate(glm::mat4(1.0f), angle*4.0f, glm::vec3(0, 0, 1));
-  glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -4.0));
-  glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -4.0), glm::vec3(0.0, 1.0, 0.0));
-  glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 1.0f, 20.0f);
-  glm::mat4 mvp = projection * view * model * anim;
+  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(0.5f));
+  glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -10.0), glm::vec3(0.0, 1.0, 0.0));
+  glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 1.0f, 100.0f);
+
+  if (cur_mx != last_mx || cur_my != last_my) {
+    glm::vec3 va = get_arcball_vector(last_mx, last_my);
+    glm::vec3 vb = get_arcball_vector(cur_mx, cur_my);
+    float angle = acos(std::min(1.0f, glm::dot(va, vb)));
+    glm::vec3 axis_in_camera_coord = glm::cross(va, vb);
+    glm::mat3 camera2object = glm::inverse(glm::mat3(view) * glm::mat3(model));
+    glm::vec3 axis_in_object_coord = camera2object * axis_in_camera_coord;
+    model = glm::rotate(model, glm::degrees(angle), axis_in_object_coord);
+    last_mx = cur_mx;
+    last_my = cur_my;
+  }
+  glm::mat4 mvp = projection * view * model * scale;
 
   glUseProgram(program);
   glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
@@ -239,8 +258,6 @@ void onDisplay()
                         0
                         );
 
-  // glDrawArrays(GL_TRIANGLES, 0, sizeOfMesh);
-
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
   int size; glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
   glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
@@ -254,6 +271,25 @@ void free_resources()
   glDeleteProgram(program);
   glDeleteBuffers(1, &vbo_cube_vertices);
   glDeleteBuffers(1, &elementbuffer);
+}
+
+void onMouse(int button, int state, int x, int y)
+{
+  if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+    arcball_on = true;
+    last_mx = cur_mx = x;
+    last_my = cur_my = y;
+  } else {
+    arcball_on = false;
+  }
+}
+
+void onMotion(int x, int y)
+{
+  if (arcball_on) {
+    cur_mx = x;
+    cur_my = y;
+  }
 }
 
 int main(int argc, char* argv[])
@@ -278,6 +314,8 @@ int main(int argc, char* argv[])
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glutMouseFunc(onMouse);
+      glutMotionFunc(onMotion);
       glutMainLoop();
     }
 
