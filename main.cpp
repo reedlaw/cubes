@@ -11,8 +11,8 @@
 #include "shader_utils.h"
 
 GLuint program;
-GLint attribute_coord3d, attribute_v_color, attribute_texcoord, uniform_mvp;
-GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, elementbuffer;
+GLint attribute_coord3d, attribute_v_normal, uniform_mvp, uniform_m_3x3_inv_transp;
+GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, normalbuffer, elementbuffer;
 std::vector<GLushort> indices;
 int screen_width=800, screen_height=600;
 int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
@@ -22,7 +22,7 @@ glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
 struct PackedVertex{
   glm::vec3 pos;
   // glm::vec2 uv;
-  // glm::vec3 normal;
+  glm::vec3 normal;
   bool operator<(const PackedVertex that) const{
     return memcmp((void*)this, (void*)&that, sizeof(PackedVertex))>0;
   };
@@ -47,17 +47,17 @@ bool get_similar_vertex(PackedVertex & packed,
 
 void indexVBO(std::vector<glm::vec3> & verts,
               // std::vector<glm::vec2> & uvs,
-              // std::vector<glm::vec3> & normals,
+              std::vector<glm::vec3> & normals,
 
               std::vector<unsigned short> & indices,
-              std::vector<glm::vec3> & indexed_verts)
+              std::vector<glm::vec3> & indexed_verts,
               // std::vector<glm::vec2> & indexed_uvs,
-              // std::vector<glm::vec3> & indexed_normals)
+              std::vector<glm::vec3> & indexed_normals)
 {
   std::map<PackedVertex, unsigned short> VertexIndex;
 
   for (int i=0; i<verts.size(); i++){
-    PackedVertex packed = {verts[i]}; // , uvs[i], normals[i]
+    PackedVertex packed = {verts[i], normals[i]}; // , uvs[i]
     unsigned short index;
     bool found = get_similar_vertex(packed, VertexIndex, index);
 
@@ -66,7 +66,7 @@ void indexVBO(std::vector<glm::vec3> & verts,
     } else {
       indexed_verts.push_back(verts[i]);
       // indexed_uvs.push_back(uvs[i]);
-      // indexed_normals.push_back(normals[i]);
+      indexed_normals.push_back(normals[i]);
       unsigned short newindex = (unsigned short)indexed_verts.size() - 1;
       indices.push_back(newindex);
       VertexIndex[packed] = newindex;
@@ -74,10 +74,11 @@ void indexVBO(std::vector<glm::vec3> & verts,
   }
 }
 
-void stupidMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices)
+void stupidMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices, std::vector<glm::vec3> & normals)
 {
   int x[] = { 0, 0, 0 };
   int n = 0;
+  glm::vec3 p1, p2, p3, p4, vecU, vecV, normal;
   for(x[2]=-dimensions[2]/2; x[2]<dimensions[2]/2; x[2]++) {
     for(x[1]=-dimensions[1]/2; x[1]<dimensions[1]/2; x[1]++) {
       for(x[0]=-dimensions[0]/2; x[0]<dimensions[0]/2; x[0]++) {
@@ -91,12 +92,23 @@ void stupidMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices)
             v[(d+2)%3] = 1;
             for(int s=0; s<2; s++) {
               t[d] = x[d] + s;
-              vertices.push_back(glm::vec3(t[0], t[1], t[2]));
-              vertices.push_back(glm::vec3(t[0]+u[0], t[1]+u[1], t[2]+u[2]));
-              vertices.push_back(glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]));
-              vertices.push_back(glm::vec3(t[0], t[1], t[2]));
-              vertices.push_back(glm::vec3(t[0]+v[0], t[1]+v[1], t[2]+v[2]));
-              vertices.push_back(glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]));
+              p1 = glm::vec3(t[0], t[1], t[2]);
+              p2 = glm::vec3(t[0]+u[0], t[1]+u[1], t[2]+u[2]);
+              p3 = glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]);
+              p4 = glm::vec3(t[0]+v[0], t[1]+v[1], t[2]+v[2]);
+              vertices.push_back(p1);
+              vertices.push_back(p2);
+              vertices.push_back(p3);
+              vecU = p2 - p1;
+              vecV = p3 - p1;
+              normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
+              normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
+              normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
+              for(int i=0; i < 6; i++)
+                normals.push_back(normal);
+              vertices.push_back(p1);
+              vertices.push_back(p4);
+              vertices.push_back(p3);
             }
           }
         }
@@ -151,13 +163,19 @@ int init_resources(void)
   makeVoxels(l, h, hill_func, volume);
 
   std::vector<glm::vec3> vertices;
-  stupidMesh(volume, d, vertices);
+  std::vector<glm::vec3> normals;
+  stupidMesh(volume, d, vertices, normals);
   std::vector<glm::vec3> indexed_vertices;
-  indexVBO(vertices, indices, indexed_vertices);
+  std::vector<glm::vec3> indexed_normals;
+  indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
 
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
+
+  glGenBuffers(1, &normalbuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+  glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
 
   glGenBuffers(1, &elementbuffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
@@ -187,10 +205,24 @@ int init_resources(void)
     return 0;
   }
 
+  attribute_name = "v_normal";
+  attribute_v_normal = glGetAttribLocation(program, attribute_name);
+  if (attribute_v_normal == -1) {
+    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
+    return 0;
+  }
+
   const char* uniform_name;
   uniform_name = "mvp";
   uniform_mvp = glGetUniformLocation(program, uniform_name);
   if (uniform_mvp == -1) {
+    fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
+    return 0;
+  }
+
+  uniform_name = "m_3x3_inv_transp";
+  uniform_m_3x3_inv_transp = glGetUniformLocation(program, uniform_name);
+  if (uniform_m_3x3_inv_transp == -1) {
     fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
     return 0;
   }
@@ -231,6 +263,9 @@ void onIdle() {
   glm::mat4 mvp = projection * view * model * scale;
 
   glUseProgram(program);
+
+  glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
+  glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
   glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
   glutPostRedisplay();
 }
@@ -258,6 +293,17 @@ void onDisplay()
                         0
                         );
 
+  glEnableVertexAttribArray(attribute_v_normal);
+  glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+  glVertexAttribPointer(
+                        attribute_v_normal,
+                        3,
+                        GL_FLOAT,
+                        GL_FALSE,
+                        0,
+                        0
+                        );
+
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
   int size; glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
   glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
@@ -271,6 +317,7 @@ void free_resources()
   glDeleteProgram(program);
   glDeleteBuffers(1, &vbo_cube_vertices);
   glDeleteBuffers(1, &elementbuffer);
+  glDeleteBuffers(1, &normalbuffer);
 }
 
 void onMouse(int button, int state, int x, int y)
@@ -313,7 +360,7 @@ int main(int argc, char* argv[])
       glEnable(GL_BLEND);
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glutMouseFunc(onMouse);
       glutMotionFunc(onMotion);
       glutMainLoop();
