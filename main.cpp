@@ -11,7 +11,7 @@
 #include "shader_utils.h"
 
 GLuint program;
-GLint attribute_coord3d, attribute_v_normal, uniform_mvp, uniform_m_3x3_inv_transp;
+GLint attribute_coord3d, attribute_v_normal, uniform_m, uniform_v, uniform_p, uniform_m_3x3_inv_transp;
 GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, normalbuffer, elementbuffer;
 std::vector<GLushort> indices;
 int screen_width=800, screen_height=600;
@@ -92,10 +92,17 @@ void stupidMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
             v[(d+2)%3] = 1;
             for(int s=0; s<2; s++) {
               t[d] = x[d] + s;
-              p1 = glm::vec3(t[0], t[1], t[2]);
-              p2 = glm::vec3(t[0]+u[0], t[1]+u[1], t[2]+u[2]);
-              p3 = glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]);
-              p4 = glm::vec3(t[0]+v[0], t[1]+v[1], t[2]+v[2]);
+              if(s==0){
+                p1 = glm::vec3(t[0], t[1], t[2]);
+                p2 = glm::vec3(t[0]+u[0], t[1]+u[1], t[2]+u[2]);
+                p3 = glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]);
+                p4 = glm::vec3(t[0]+v[0], t[1]+v[1], t[2]+v[2]);
+              } else {
+                p3 = glm::vec3(t[0], t[1], t[2]);
+                p2 = glm::vec3(t[0]+u[0], t[1]+u[1], t[2]+u[2]);
+                p1 = glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]);
+                p4 = glm::vec3(t[0]+v[0], t[1]+v[1], t[2]+v[2]);
+              }
               vertices.push_back(p1);
               vertices.push_back(p2);
               vertices.push_back(p3);
@@ -166,9 +173,101 @@ int init_resources(void)
   std::vector<glm::vec3> normals;
   stupidMesh(volume, d, vertices, normals);
   std::vector<glm::vec3> indexed_vertices;
+  // // back
+  // indexed_vertices.push_back(glm::vec3(-5., -5., -5.));
+  // indexed_vertices.push_back(glm::vec3(5., -5., -5.));
+  // indexed_vertices.push_back(glm::vec3(5., 5., -5.));
+  // indexed_vertices.push_back(glm::vec3(-5., 5., -5.));
+  // // front
+  // indexed_vertices.push_back(glm::vec3(-5., -5., 5.));
+  // indexed_vertices.push_back(glm::vec3(5., -5., 5.));
+  // indexed_vertices.push_back(glm::vec3(5., 5., 5.));
+  // indexed_vertices.push_back(glm::vec3(-5., 5., 5.));
+  // // left
+  // glm::vec3 p1, p2, p3, vecU, vecV, normal;
+  // p3 = glm::vec3(5., -5., -5.);
+  // p2 = glm::vec3(5., -5., 5.);
+  // p1 = glm::vec3(5., 5., -5.);
+  // indexed_vertices.push_back(p1);
+  // indexed_vertices.push_back(p2);
+  // indexed_vertices.push_back(p3);
+  // indexed_vertices.push_back(glm::vec3(-5., 5., 5.));
+  // vecU = p2 - p1;
+  // vecV = p3 - p1;
+  // normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
+  // normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
+  // normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
+  // fprintf(stderr, "Left x: %f, y: %f, z: %f\n", normal.x, normal.y, normal.z);
+  // // right
+  // p1 = glm::vec3(5., -5., -5.);
+  // p2 = glm::vec3(5., -5., 5.);
+  // p3 = glm::vec3(5., 5., -5.);
+  // indexed_vertices.push_back(p1);
+  // indexed_vertices.push_back(p2);
+  // indexed_vertices.push_back(p3);
+  // indexed_vertices.push_back(glm::vec3(5., 5., 5.));
+  // vecU = p2 - p1;
+  // vecV = p3 - p1;
+  // normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
+  // normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
+  // normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
+  // fprintf(stderr, "Right x: %f, y: %f, z: %f\n", normal.x, normal.y, normal.z);
+
   std::vector<glm::vec3> indexed_normals;
+  // // back
+  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
+  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
+  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
+  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
+  // // front
+  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
+  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
+  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
+  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
+  // // left
+  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
+  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
+  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
+  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
+  // // right
+  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
+  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
+  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
+  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
+  // // back
+  // indices.push_back(0);
+  // indices.push_back(1);
+  // indices.push_back(2);
+  // indices.push_back(2);
+  // indices.push_back(3);
+  // indices.push_back(0);
+  // // front
+  // indices.push_back(4);
+  // indices.push_back(5);
+  // indices.push_back(6);
+  // indices.push_back(6);
+  // indices.push_back(7);
+  // indices.push_back(4);
+  // // left
+  // indices.push_back(8);
+  // indices.push_back(9);
+  // indices.push_back(10);
+  // indices.push_back(10);
+  // indices.push_back(9);
+  // indices.push_back(11);
+  // // right
+  // indices.push_back(12);
+  // indices.push_back(13);
+  // indices.push_back(14);
+  // indices.push_back(14);
+  // indices.push_back(13);
+  // indices.push_back(15);
+
   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
 
+  // for(int i=0; i<indexed_normals.size(); i++)
+  //   fprintf(stderr, "%f, %f, %f\n", indexed_normals[i].x, indexed_normals[i].y,  indexed_normals[i].z);
+  
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
@@ -213,9 +312,23 @@ int init_resources(void)
   }
 
   const char* uniform_name;
-  uniform_name = "mvp";
-  uniform_mvp = glGetUniformLocation(program, uniform_name);
-  if (uniform_mvp == -1) {
+  uniform_name = "m";
+  uniform_m = glGetUniformLocation(program, uniform_name);
+  if (uniform_m == -1) {
+    fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
+    return 0;
+  }
+
+  uniform_name = "v";
+  uniform_v = glGetUniformLocation(program, uniform_name);
+  if (uniform_v == -1) {
+    fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
+    return 0;
+  }
+
+  uniform_name = "p";
+  uniform_p = glGetUniformLocation(program, uniform_name);
+  if (uniform_p == -1) {
     fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
     return 0;
   }
@@ -260,13 +373,14 @@ void onIdle() {
     last_mx = cur_mx;
     last_my = cur_my;
   }
-  glm::mat4 mvp = projection * view * model * scale;
 
   glUseProgram(program);
 
   glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
-  glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
+  glUniformMatrix4fv(uniform_m, 1, GL_FALSE, glm::value_ptr(model * scale));
+  glUniformMatrix4fv(uniform_v, 1, GL_FALSE, glm::value_ptr(view));
+  glUniformMatrix4fv(uniform_p, 1, GL_FALSE, glm::value_ptr(projection));
   glutPostRedisplay();
 }
 
@@ -309,6 +423,7 @@ void onDisplay()
   glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
   glDisableVertexAttribArray(attribute_coord3d);
+  glDisableVertexAttribArray(attribute_v_normal);
   glutSwapBuffers();
 }
 
