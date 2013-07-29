@@ -18,6 +18,7 @@ int screen_width=800, screen_height=600;
 int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
 int arcball_on = false;
 glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
+int PreviousClock, Clock, deltaT;
 
 struct PackedVertex{
   glm::vec3 pos;
@@ -33,8 +34,8 @@ bool is_near(float v1, float v2){
 }
 
 bool get_similar_vertex(PackedVertex & packed,
-                       std::map<PackedVertex, unsigned short> & VertexIndex,
-                       unsigned short & result)
+                        std::map<PackedVertex, unsigned short> & VertexIndex,
+                        unsigned short & result)
 {
   std::map<PackedVertex, unsigned short>::iterator it = VertexIndex.find(packed);
   if (it == VertexIndex.end()){
@@ -142,7 +143,8 @@ int cube_func(int i, int j, int k) {
 }
 
 int hole_func(int i, int j, int k) {
-  return abs(i-7) > 3 || abs(j-7) > 3;
+  if (abs(i-7) > 3 || abs(j-7) > 3)
+    return 1;
 }
 
 int hill_func(int i, int j, int k) {
@@ -150,8 +152,16 @@ int hill_func(int i, int j, int k) {
     return 1;
 }
 
+int anim_hill_func(int i, int j, int k) {
+  float angle = glutGet(GLUT_ELAPSED_TIME) / 1000.0 * 15;  // base 15° per second
+  if (j <= 16 * exp(-(i*i + k*k) / angle))
+    return 1;
+}
+
+
 int init_resources(void)
 {
+  PreviousClock = glutGet(GLUT_ELAPSED_TIME);
   // cube
   // int l[] = { 0, 0, 0 };
   // int h[] = { 16, 16, 16 };
@@ -167,107 +177,17 @@ int init_resources(void)
   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
   int size = d[0]*d[1]*d[2];
   int volume[size];
-  makeVoxels(l, h, hill_func, volume);
+
+  makeVoxels(l, h, anim_hill_func, volume);
 
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
   stupidMesh(volume, d, vertices, normals);
   std::vector<glm::vec3> indexed_vertices;
-  // // back
-  // indexed_vertices.push_back(glm::vec3(-5., -5., -5.));
-  // indexed_vertices.push_back(glm::vec3(5., -5., -5.));
-  // indexed_vertices.push_back(glm::vec3(5., 5., -5.));
-  // indexed_vertices.push_back(glm::vec3(-5., 5., -5.));
-  // // front
-  // indexed_vertices.push_back(glm::vec3(-5., -5., 5.));
-  // indexed_vertices.push_back(glm::vec3(5., -5., 5.));
-  // indexed_vertices.push_back(glm::vec3(5., 5., 5.));
-  // indexed_vertices.push_back(glm::vec3(-5., 5., 5.));
-  // // left
-  // glm::vec3 p1, p2, p3, vecU, vecV, normal;
-  // p3 = glm::vec3(5., -5., -5.);
-  // p2 = glm::vec3(5., -5., 5.);
-  // p1 = glm::vec3(5., 5., -5.);
-  // indexed_vertices.push_back(p1);
-  // indexed_vertices.push_back(p2);
-  // indexed_vertices.push_back(p3);
-  // indexed_vertices.push_back(glm::vec3(-5., 5., 5.));
-  // vecU = p2 - p1;
-  // vecV = p3 - p1;
-  // normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
-  // normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
-  // normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
-  // fprintf(stderr, "Left x: %f, y: %f, z: %f\n", normal.x, normal.y, normal.z);
-  // // right
-  // p1 = glm::vec3(5., -5., -5.);
-  // p2 = glm::vec3(5., -5., 5.);
-  // p3 = glm::vec3(5., 5., -5.);
-  // indexed_vertices.push_back(p1);
-  // indexed_vertices.push_back(p2);
-  // indexed_vertices.push_back(p3);
-  // indexed_vertices.push_back(glm::vec3(5., 5., 5.));
-  // vecU = p2 - p1;
-  // vecV = p3 - p1;
-  // normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
-  // normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
-  // normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
-  // fprintf(stderr, "Right x: %f, y: %f, z: %f\n", normal.x, normal.y, normal.z);
-
   std::vector<glm::vec3> indexed_normals;
-  // // back
-  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
-  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
-  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
-  // indexed_normals.push_back(glm::vec3(0., 0., 100.));
-  // // front
-  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
-  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
-  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
-  // indexed_normals.push_back(glm::vec3(0., 0., -100.));
-  // // left
-  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
-  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
-  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
-  // indexed_normals.push_back(glm::vec3(100., 0., 0.));
-  // // right
-  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
-  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
-  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
-  // indexed_normals.push_back(glm::vec3(-100., 0., 0.));
-  // // back
-  // indices.push_back(0);
-  // indices.push_back(1);
-  // indices.push_back(2);
-  // indices.push_back(2);
-  // indices.push_back(3);
-  // indices.push_back(0);
-  // // front
-  // indices.push_back(4);
-  // indices.push_back(5);
-  // indices.push_back(6);
-  // indices.push_back(6);
-  // indices.push_back(7);
-  // indices.push_back(4);
-  // // left
-  // indices.push_back(8);
-  // indices.push_back(9);
-  // indices.push_back(10);
-  // indices.push_back(10);
-  // indices.push_back(9);
-  // indices.push_back(11);
-  // // right
-  // indices.push_back(12);
-  // indices.push_back(13);
-  // indices.push_back(14);
-  // indices.push_back(14);
-  // indices.push_back(13);
-  // indices.push_back(15);
 
   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
 
-  // for(int i=0; i<indexed_normals.size(); i++)
-  //   fprintf(stderr, "%f, %f, %f\n", indexed_normals[i].x, indexed_normals[i].y,  indexed_normals[i].z);
-  
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
@@ -285,7 +205,7 @@ int init_resources(void)
   GLuint vs, fs;
   if ((vs = create_shader("cube.v.glsl", GL_VERTEX_SHADER)) == 0) return 0;
   if ((fs = create_shader("cube.f.glsl", GL_FRAGMENT_SHADER)) == 0) return 0;
- 
+
   program = glCreateProgram();
   glAttachShader(program, vs);
   glAttachShader(program, fs);
@@ -375,6 +295,48 @@ void onIdle() {
   }
 
   glUseProgram(program);
+
+  Clock = glutGet(GLUT_ELAPSED_TIME);
+  deltaT = Clock - PreviousClock;
+  if (deltaT < 35) {
+  } else {
+    PreviousClock = Clock;
+    // cube
+    // int l[] = { 0, 0, 0 };
+    // int h[] = { 16, 16, 16 };
+
+    // hole
+    // int l[] = { 0, 0, 0 };
+    // int h[] = { 16, 16, 1 };
+
+    // hill
+    int l[] = { -16, 0, -16 };
+    int h[] = { 16, 16, 16 };
+
+    int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
+    int size = d[0]*d[1]*d[2];
+    int volume[size];
+
+    makeVoxels(l, h, anim_hill_func, volume);
+
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    stupidMesh(volume, d, vertices, normals);
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec3> indexed_normals;
+    indices.clear();
+
+    indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+    glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+    glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
+  }
 
   glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
