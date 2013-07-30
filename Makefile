@@ -1,6 +1,8 @@
 CC=g++
 LDLIBS=-lglut -lGLEW -lGL
-CFLAGS=-Wtrigraphs
+CXXFLAGS=-Wtrigraphs -pg
+LDFLAGS=-Wtrigraphs -pg
+export
 all: main
 main: shader_utils.o
 main.o: res_texture.c

@@ -10,7 +10,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
 
-GLuint program;
+GLuint program, window;
 GLint attribute_coord3d, attribute_v_normal, uniform_m, uniform_v, uniform_p, uniform_m_3x3_inv_transp;
 GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, normalbuffer, elementbuffer;
 std::vector<GLushort> indices;
@@ -71,6 +71,86 @@ void indexVBO(std::vector<glm::vec3> & verts,
       unsigned short newindex = (unsigned short)indexed_verts.size() - 1;
       indices.push_back(newindex);
       VertexIndex[packed] = newindex;
+    }
+  }
+}
+
+
+bool findVoxel(int i, int j, int k, int *volume, int *dimensions) {
+  return volume[i + dimensions[0] * (j + dimensions[1]) * k]==1;
+}
+
+void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices, std::vector<glm::vec3> & normals)
+{
+  glm::vec3 p1, p2, p3, p4, vecU, vecV, normal;
+  //Sweep over 3-axes
+  for(int d=0; d<3; d++) {
+    int i, j, k, l, w, h;
+    int u = (d+1)%3;
+    int v = (d+2)%3;
+    int x[] = { 0, 0, 0 };
+    int q[] = { 0, 0, 0 };
+    int mask[dimensions[u] * dimensions[v]];
+    q[d] = 1;
+    for(x[d]=-1; x[d]<dimensions[d]; ) {
+      //Compute mask
+      int n = 0;
+      for(x[v]=0; x[v]<dimensions[v]; x[v]++) {}
+      for(x[u]=0; x[u]<dimensions[u]; x[u]++) {
+        mask[n++] = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : false) != (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : false);
+      }
+      x[d]++;
+      //Generate mesh for mask using lexicographic ordering
+      n = 0;
+      for(j=0; j<dimensions[v]; j++) {
+        for(i=0; i<dimensions[u]; ) {
+          if(mask[n]==1) {
+            //Compute width
+            for(w=1; mask[n+w] && i+w<dimensions[u]; w++) {}
+            //Compute height (this is slightly awkward
+            bool done = false;
+            for(h=1; j+h<dimensions[v]; h++) {
+              for(k=0; k<w; k++) {
+                if(!mask[n+k+h*dimensions[u]]) {
+                  done = true;
+                  break;
+                }
+              }
+              if(done) {
+                break;
+              }
+            }
+            //Add quad
+            x[u] = i; x[v] = j;
+            int du[] = {0,0,0}; du[u] = w;
+            int dv[] = {0,0,0}; dv[v] = h;
+            p1 = glm::vec3(x[0], x[1], x[2]);
+            p2 = glm::vec3(x[0]+du[0], x[1]+du[1], x[2]+du[2]);
+            p3 = glm::vec3(x[0]+du[0]+dv[0], x[1]+du[1]+dv[1], x[2]+du[2]+dv[2]);
+            p4 = glm::vec3(x[0] +dv[0], x[1] +dv[1], x[2] +dv[2]);
+            vertices.push_back(p1);
+            vertices.push_back(p2);
+            vertices.push_back(p3);
+            vertices.push_back(p1);
+            vertices.push_back(p4);
+            vertices.push_back(p3);
+            normal = glm::vec3(100., 0., 0.);
+            for(int o=0; o<6; o++) {
+              normals.push_back(normal);
+            }
+            //Zero-out mask
+            for(l=0; l<h; l++) {
+              for(k=0; k<w; k++) {
+                mask[n+k+l*dimensions[u]] = false;
+              }
+            }
+            //Increment counters and continue
+            i += w; n += w;
+          } else {
+            i++; n++;
+          }
+        }
+      }
     }
   }
 }
@@ -163,26 +243,29 @@ int init_resources(void)
 {
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
   // cube
-  // int l[] = { 0, 0, 0 };
-  // int h[] = { 16, 16, 16 };
+  int l[] = { 0, 0, 0 };
+  int h[] = { 8, 8, 8 };
 
   // hole
   // int l[] = { 0, 0, 0 };
   // int h[] = { 16, 16, 1 };
 
   // hill
-  int l[] = { -16, 0, -16 };
-  int h[] = { 16, 16, 16 };
+  // int l[] = { -16, 0, -16 };
+  // int h[] = { 16, 16, 16 };
 
   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
   int size = d[0]*d[1]*d[2];
   int volume[size];
 
-  makeVoxels(l, h, anim_hill_func, volume);
+  makeVoxels(l, h, cube_func, volume);
 
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
-  stupidMesh(volume, d, vertices, normals);
+  greedyMesh(volume, d, vertices, normals);
+  // for(int i=0; i<vertices.size(); i++) {
+  //   fprintf(stderr, "v.x: %f, v.y: %f, v.z: %f\n", vertices[i].x, vertices[i].y, vertices[i].z);
+  // }
   std::vector<glm::vec3> indexed_vertices;
   std::vector<glm::vec3> indexed_normals;
 
@@ -296,47 +379,47 @@ void onIdle() {
 
   glUseProgram(program);
 
-  Clock = glutGet(GLUT_ELAPSED_TIME);
-  deltaT = Clock - PreviousClock;
-  if (deltaT < 35) {
-  } else {
-    PreviousClock = Clock;
-    // cube
-    // int l[] = { 0, 0, 0 };
-    // int h[] = { 16, 16, 16 };
+  // Clock = glutGet(GLUT_ELAPSED_TIME);
+  // deltaT = Clock - PreviousClock;
+  // if (deltaT < 35) {
+  // } else {
+  //   PreviousClock = Clock;
+  //   // cube
+  //   // int l[] = { 0, 0, 0 };
+  //   // int h[] = { 16, 16, 16 };
 
-    // hole
-    // int l[] = { 0, 0, 0 };
-    // int h[] = { 16, 16, 1 };
+  //   // hole
+  //   // int l[] = { 0, 0, 0 };
+  //   // int h[] = { 16, 16, 1 };
 
-    // hill
-    int l[] = { -16, 0, -16 };
-    int h[] = { 16, 16, 16 };
+  //   // hill
+  //   int l[] = { -16, 0, -16 };
+  //   int h[] = { 16, 16, 16 };
 
-    int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
-    int size = d[0]*d[1]*d[2];
-    int volume[size];
+  //   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
+  //   int size = d[0]*d[1]*d[2];
+  //   int volume[size];
 
-    makeVoxels(l, h, anim_hill_func, volume);
+  //   makeVoxels(l, h, anim_hill_func, volume);
 
-    std::vector<glm::vec3> vertices;
-    std::vector<glm::vec3> normals;
-    stupidMesh(volume, d, vertices, normals);
-    std::vector<glm::vec3> indexed_vertices;
-    std::vector<glm::vec3> indexed_normals;
-    indices.clear();
+  //   std::vector<glm::vec3> vertices;
+  //   std::vector<glm::vec3> normals;
+  //   stupidMesh(volume, d, vertices, normals);
+  //   std::vector<glm::vec3> indexed_vertices;
+  //   std::vector<glm::vec3> indexed_normals;
+  //   indices.clear();
 
-    indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
+  //   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
-    glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
+  //   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+  //   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-    glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
+  //   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+  //   glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
-  }
+  //   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+  //   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
+  // }
 
   glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
@@ -416,12 +499,27 @@ void onMotion(int x, int y)
   }
 }
 
+void keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 27:
+    free_resources();
+    glutDestroyWindow(window);
+		exit(0);
+
+		break;
+	}
+
+	glutPostRedisplay();
+}
+
 int main(int argc, char* argv[])
 {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_RGBA|GLUT_ALPHA|GLUT_DOUBLE|GLUT_DEPTH);
   glutInitWindowSize(screen_width, screen_height);
-  glutCreateWindow("Cube Engine");
+  window = glutCreateWindow("Cube Engine");
 
   GLenum glew_status = glewInit();
   if (glew_status != GLEW_OK)
@@ -440,6 +538,7 @@ int main(int argc, char* argv[])
       // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glutMouseFunc(onMouse);
       glutMotionFunc(onMotion);
+      glutKeyboardFunc(keyboard);
       glutMainLoop();
     }
 
