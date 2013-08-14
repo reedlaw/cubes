@@ -77,7 +77,7 @@ void indexVBO(std::vector<glm::vec3> & verts,
 
 
 bool findVoxel(int i, int j, int k, int *volume, int *dimensions) {
-  return volume[i + dimensions[0] * (j + dimensions[1]) * k]==1;
+  return volume[i + dimensions[0] * (j + dimensions[1] * k)]==1;
 }
 
 void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices, std::vector<glm::vec3> & normals)
@@ -92,13 +92,16 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
     int q[] = { 0, 0, 0 };
     int mask[dimensions[u] * dimensions[v]];
     q[d] = 1;
+
     for(x[d]=-1; x[d]<dimensions[d]; ) {
       //Compute mask
       int n = 0;
-      for(x[v]=0; x[v]<dimensions[v]; x[v]++) {}
-      for(x[u]=0; x[u]<dimensions[u]; x[u]++) {
-        mask[n++] = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : false) != (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : false);
+      for(x[v]=0; x[v]<dimensions[v]; x[v]++) {
+        for(x[u]=0; x[u]<dimensions[u]; x[u]++) {
+          mask[n++] = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : false) != (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : false);
+        }
       }
+
       x[d]++;
       //Generate mesh for mask using lexicographic ordering
       n = 0;
@@ -134,7 +137,12 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
             vertices.push_back(p1);
             vertices.push_back(p4);
             vertices.push_back(p3);
-            normal = glm::vec3(100., 0., 0.);
+            vecU = p2 - p1;
+            vecV = p3 - p1;
+            normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
+            normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
+            normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
+            // normal = glm::vec3(100., 0., 0.);
             for(int o=0; o<6; o++) {
               normals.push_back(normal);
             }
@@ -243,22 +251,22 @@ int init_resources(void)
 {
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
   // cube
-  int l[] = { 0, 0, 0 };
-  int h[] = { 8, 8, 8 };
+  // int l[] = { 0, 0, 0 };
+  // int h[] = { 3, 3, 3 };
 
   // hole
   // int l[] = { 0, 0, 0 };
   // int h[] = { 16, 16, 1 };
 
   // hill
-  // int l[] = { -16, 0, -16 };
-  // int h[] = { 16, 16, 16 };
+  int l[] = { -16, 0, -16 };
+  int h[] = { 16, 16, 16 };
 
   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
   int size = d[0]*d[1]*d[2];
   int volume[size];
 
-  makeVoxels(l, h, cube_func, volume);
+  makeVoxels(l, h, hill_func, volume);
 
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
