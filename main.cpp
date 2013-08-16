@@ -18,6 +18,7 @@ int screen_width=800, screen_height=600;
 int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
 int arcball_on = false;
 glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
+int PreviousClock, Clock, deltaT;
 
 struct PackedVertex{
   glm::vec3 pos;
@@ -277,23 +278,25 @@ int anim_hill_func(int i, int j, int k) {
 
 int init_resources(void)
 {
+  PreviousClock = glutGet(GLUT_ELAPSED_TIME);
+
   // cube
-  // int l[] = { 0, 0, 0 };
-  // int h[] = { 2, 2, 2 };
+  int l[] = { 0, 0, 0 };
+  int h[] = { 2, 2, 2 };
 
   // hole
   // int l[] = { 0, 0, 0 };
   // int h[] = { 16, 16, 1 };
 
   // hill
-  int l[] = { -16, 0, -16 };
-  int h[] = { 16, 16, 16 };
+  // int l[] = { -16, 0, -16 };
+  // int h[] = { 16, 16, 16 };
 
   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
   int size = d[0]*d[1]*d[2];
   int volume[size];
 
-  makeVoxels(l, h, hill_func, volume);
+  makeVoxels(l, h, cube_func, volume);
 
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
@@ -303,17 +306,17 @@ int init_resources(void)
 
   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
 
-  // for(int i=0; i<indexed_normals.size(); i++) {
-  //   fprintf(stderr, "v %f %f %f\n", indexed_vertices[i].x, indexed_vertices[i].y, indexed_vertices[i].z);
-  // }
+  for(int i=0; i<indexed_normals.size(); i++) {
+    fprintf(stderr, "v %f %f %f\n", indexed_vertices[i].x, indexed_vertices[i].y, indexed_vertices[i].z);
+  }
 
-  // for(int i=0; i<indexed_normals.size(); i++) {
-  //   fprintf(stderr, "vn %f %f %f\n", indexed_normals[i].x, indexed_normals[i].y, indexed_normals[i].z);
-  // }
+  for(int i=0; i<indexed_normals.size(); i++) {
+    fprintf(stderr, "vn %f %f %f\n", indexed_normals[i].x, indexed_normals[i].y, indexed_normals[i].z);
+  }
 
-  // for(int i=0; i<indices.size(); i=i+3) {
-  //   fprintf(stderr, "f %i//%i %i//%i %i//%i\n", indices[i]+1, indices[i]+1, indices[i+1]+1, indices[i+1]+1, indices[i+2]+1, indices[i+2]+1);
-  // }
+  for(int i=0; i<indices.size(); i=i+3) {
+    fprintf(stderr, "f %i//%i %i//%i %i//%i\n", indices[i]+1, indices[i]+1, indices[i+1]+1, indices[i+1]+1, indices[i+2]+1, indices[i+2]+1);
+  }
 
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
@@ -422,6 +425,48 @@ void onIdle() {
   }
 
   glUseProgram(program);
+
+  // Clock = glutGet(GLUT_ELAPSED_TIME);
+  // deltaT = Clock - PreviousClock;
+  // if (deltaT < 35) {
+  // } else {
+  //   PreviousClock = Clock;
+  //   // cube
+  //   // int l[] = { 0, 0, 0 };
+  //   // int h[] = { 16, 16, 16 };
+
+  //   // hole
+  //   // int l[] = { 0, 0, 0 };
+  //   // int h[] = { 16, 16, 1 };
+
+  //   // hill
+  //   int l[] = { -16, 0, -16 };
+  //   int h[] = { 16, 16, 16 };
+
+  //   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
+  //   int size = d[0]*d[1]*d[2];
+  //   int volume[size];
+
+  //   makeVoxels(l, h, anim_hill_func, volume);
+
+  //   std::vector<glm::vec3> vertices;
+  //   std::vector<glm::vec3> normals;
+  //   greedyMesh(volume, d, vertices, normals);
+  //   std::vector<glm::vec3> indexed_vertices;
+  //   std::vector<glm::vec3> indexed_normals;
+  //   indices.clear();
+
+  //   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
+
+  //   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+  //   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
+
+  //   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+  //   glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
+
+  //   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+  //   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
+  // }
 
   glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
@@ -537,7 +582,7 @@ int main(int argc, char* argv[])
       glEnable(GL_BLEND);
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glutMouseFunc(onMouse);
       glutMotionFunc(onMotion);
       glutKeyboardFunc(keyboard);
