@@ -92,6 +92,10 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
     int mask[dimensions[u] * dimensions[v]];
     int normals_mask[dimensions[u] * dimensions[v]];
     q[d] = 1;
+    //Set normal mask to negative ones indicating not yet on
+    for(i=0; i<dimensions[v]*dimensions[v]; i++) {
+      normals_mask[i] = -1;
+    }
 
     for(x[d]=-1; x[d]<dimensions[d]; ) {
       //Compute mask
@@ -108,15 +112,17 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
       for(j=0; j<dimensions[v]; j++) {
         for(i=0; i<dimensions[u]; ) {
           if(mask[n]==1) {
+            //Compute width
+            for(w=1; mask[n+w] && i+w<dimensions[u]; w++) {}
+
+            //Flip normal bit
             bool flip_normal = false;
-            if(normals_mask[n] == 1) {
+            if(normals_mask[n] == 1 || normals_mask[n] == -1) {
               flip_normal = true;
-              normals_mask[n] = 0;
             } else {
               normals_mask[n] = 1;
             }
-            //Compute width
-            for(w=1; mask[n+w] && i+w<dimensions[u]; w++) {}
+
             //Compute height (this is slightly awkward
             bool done = false;
             for(h=1; j+h<dimensions[v]; h++) {
@@ -157,11 +163,6 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
 
             vecU = p2 - p1;
             vecV = p3 - p1;
-            // if(flip_normal) {
-            //   normal.x = -((vecU.y * vecV.z) - (vecU.z * vecV.y));
-            //   normal.y = -((vecU.z * vecV.x) - (vecU.x * vecV.z));
-            //   normal.z = -((vecU.x * vecV.y) - (vecU.y * vecV.x));
-            // } else {
             normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
             normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
             normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
@@ -173,13 +174,14 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
             for(l=0; l<h; l++) {
               for(k=0; k<w; k++) {
                 mask[n+k+l*dimensions[u]] = false;
+                normals_mask[n+k+l*dimensions[u]] = false;
               }
             }
             //Increment counters and continue
             i += w; n += w;
           } else {
             if(normals_mask[n] == 1) {
-              normals_mask[n] = 0;
+              normals_mask[n] = false;
             }
             i++; n++;
           }
