@@ -12,8 +12,8 @@
 #include "shader_utils.h"
 
 GLuint program, window;
-GLint attribute_coord3d, attribute_v_normal, uniform_m, uniform_v, uniform_p, uniform_m_3x3_inv_transp;
-GLuint vbo_cube_vertices, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, normalbuffer, elementbuffer;
+GLint attribute_v_coord, attribute_v_normal, attribute_v_color, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
+GLuint ibo_elements, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, colorbuffer, normalbuffer, elementbuffer;
 std::vector<GLushort> indices;
 int screen_width=800, screen_height=600;
 int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
@@ -21,9 +21,16 @@ int arcball_on = false;
 glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
 int PreviousClock, Clock, deltaT;
 
+glm::vec3 color_table[3] = { glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0) };
+
+#define CX 32
+#define CY 32
+#define CZ 32
+
 struct PackedVertex{
   glm::vec3 pos;
   // glm::vec2 uv;
+  glm::vec3 color;
   glm::vec3 normal;
   bool operator<(const PackedVertex that) const{
     return memcmp((void*)this, (void*)&that, sizeof(PackedVertex))>0;
@@ -49,17 +56,17 @@ bool get_similar_vertex(PackedVertex & packed,
 
 void indexVBO(std::vector<glm::vec3> & verts,
               // std::vector<glm::vec2> & uvs,
+              std::vector<glm::vec3> & colors,
               std::vector<glm::vec3> & normals,
-
               std::vector<unsigned short> & indices,
               std::vector<glm::vec3> & indexed_verts,
-              // std::vector<glm::vec2> & indexed_uvs,
+              std::vector<glm::vec3> & indexed_colors,
               std::vector<glm::vec3> & indexed_normals)
 {
   std::map<PackedVertex, unsigned short> VertexIndex;
 
   for (int i=0; i<verts.size(); i++){
-    PackedVertex packed = {verts[i], normals[i]}; // , uvs[i]
+    PackedVertex packed = {verts[i], colors[i], normals[i]}; // , uvs[i]
     unsigned short index;
     bool found = get_similar_vertex(packed, VertexIndex, index);
 
@@ -68,6 +75,7 @@ void indexVBO(std::vector<glm::vec3> & verts,
     } else {
       indexed_verts.push_back(verts[i]);
       // indexed_uvs.push_back(uvs[i]);
+      indexed_colors.push_back(colors[i]);
       indexed_normals.push_back(normals[i]);
       unsigned short newindex = (unsigned short)indexed_verts.size() - 1;
       indices.push_back(newindex);
@@ -77,11 +85,11 @@ void indexVBO(std::vector<glm::vec3> & verts,
 }
 
 
-bool findVoxel(int i, int j, int k, int *volume, int *dimensions) {
-  return volume[i + dimensions[0] * (j + dimensions[1] * k)]==1;
+int findVoxel(int i, int j, int k, int *volume, int *dimensions) {
+  return volume[i + dimensions[0] * (j + dimensions[1] * k)];
 }
 
-void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices, std::vector<glm::vec3> & normals)
+void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices, std::vector<glm::vec3> & normals, std::vector<glm::vec3> & colors)
 {
   glm::vec3 p1, p2, p3, p4, vecU, vecV, normal;
   //Sweep over 3-axes
@@ -95,7 +103,7 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
     int normals_mask[dimensions[u] * dimensions[v]];
     q[d] = 1;
     //Set normal mask to negative ones indicating not yet on
-    for(i=0; i<dimensions[v]*dimensions[v]; i++) {
+    for(i=0; i<dimensions[u]*dimensions[v]; i++) {
       normals_mask[i] = -1;
     }
 
@@ -103,8 +111,18 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
       //Compute mask
       int n = 0;
       for(x[v]=0; x[v]<dimensions[v]; x[v]++) {
-        for(x[u]=0; x[u]<dimensions[u]; x[u]++) {
-          mask[n++] = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : false) != (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : false);
+        for(x[u]=0; x[u]<dimensions[u]; x[u]++, n++) {
+          int a = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : 0);
+          int b = (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : 0);
+          bool bool_a = static_cast<bool>(a);
+          bool bool_b = static_cast<bool>(b);
+          if(bool_a == bool_b) {
+            mask[n] = 0;
+          } else if(bool_a) {
+            mask[n] = a;
+          } else {
+            mask[n] = b;
+          }
         }
       }
 
@@ -113,9 +131,10 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
       n = 0;
       for(j=0; j<dimensions[v]; j++) {
         for(i=0; i<dimensions[u]; ) {
-          if(mask[n]==1) {
+          int c = mask[n];
+          if(c != 0) {
             //Compute width
-            for(w=1; mask[n+w] && i+w<dimensions[u]; w++) {}
+            for(w=1; c == mask[n+w] && i+w<dimensions[u]; w++) {}
 
             //Flip normal bit
             bool flip_normal = false;
@@ -129,7 +148,7 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
             bool done = false;
             for(h=1; j+h<dimensions[v]; h++) {
               for(k=0; k<w; k++) {
-                if(!mask[n+k+h*dimensions[u]]) {
+                if(c != mask[n+k+h*dimensions[u]]) {
                   done = true;
                   break;
                 }
@@ -168,9 +187,11 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
             normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
             normal.y = (vecU.z * vecV.x) - (vecU.x * vecV.z);
             normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
+
             // }
             for(int o=0; o<6; o++) {
               normals.push_back(normal);
+              colors.push_back(color_table[c-1]);
             }
             //Zero-out mask
             for(l=0; l<h; l++) {
@@ -257,7 +278,11 @@ void makeVoxels(int *l, int *h, int (*f)(int, int, int), int *volume) {
 }
 
 int cube_func(int i, int j, int k) {
-  return 1;
+  if (i<2) {
+    return 1;
+  } else {
+    return 2;
+  }
 }
 
 int hole_func(int i, int j, int k) {
@@ -269,13 +294,26 @@ int hole_func(int i, int j, int k) {
 }
 
 int hill_func(int i, int j, int k) {
-  if (j <= 32 * exp(-(i*i + k*k) / 512.0))
+  if (j <= 32 * exp(-(i*i + k*k) / 512.0)) {
     return 1;
+  } else {
+    return 0;
+  }
 }
 
-int noise_func(int i, int j, int k) {
-  if (pow(simplex_noise(1, i*5, j*5, k*5),3)>=1.1)
+int hilly_terrain_func(int i, int j, int k) {
+  float h0 = 3.0 * sin(3.1415 * i / 12.0 - 3.1415 * k * 0.1) + 27;
+  if(j > h0+1) {
+    return 0;
+  }
+  if(h0 <= j) {
     return 1;
+  }
+  float h1 = 2.0 * sin(3.1415 * i * 0.25 - 3.1415 * k * 0.3) + 20;
+  if(h1 <= j) {
+    return 2;
+  }
+  return 3;
 }
 
 int anim_hill_func(int i, int j, int k) {
@@ -291,7 +329,7 @@ int init_resources(void)
 
   // cube
   // int l[] = { 0, 0, 0 };
-  // int h[] = { 4, 4, 2 };
+  // int h[] = { 4, 4, 4 };
 
   // hole
   // int l[] = { 0, 0, 0 };
@@ -309,11 +347,12 @@ int init_resources(void)
 
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
+  std::vector<glm::vec3> colors;
 
   struct timespec tsi, tsf;
 
   clock_gettime(CLOCK_MONOTONIC, &tsi);
-  greedyMesh(volume, d, vertices, normals);
+  greedyMesh(volume, d, vertices, normals, colors);
   clock_gettime(CLOCK_MONOTONIC, &tsf);
 
   double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
@@ -323,9 +362,10 @@ int init_resources(void)
 
   std::vector<glm::vec3> indexed_vertices;
   std::vector<glm::vec3> indexed_normals;
+  std::vector<glm::vec3> indexed_colors;
 
   clock_gettime(CLOCK_MONOTONIC, &tsi);
-  indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
+  indexVBO(vertices, colors, normals, indices, indexed_vertices, indexed_colors, indexed_normals);
   clock_gettime(CLOCK_MONOTONIC, &tsf);
   elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
   elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
@@ -340,17 +380,25 @@ int init_resources(void)
   //   fprintf(stderr, "vn %f %f %f\n", indexed_normals[i].x, indexed_normals[i].y, indexed_normals[i].z);
   // }
 
+  // for(int i=0; i<indexed_colors.size(); i++) {
+  //   fprintf(stderr, "c %f %f %f\n", indexed_colors[i].x, indexed_colors[i].y, indexed_colors[i].z);
+  // }
+
   // for(int i=0; i<indices.size(); i=i+3) {
   //   fprintf(stderr, "f %i//%i %i//%i %i//%i\n", indices[i]+1, indices[i]+1, indices[i+1]+1, indices[i+1]+1, indices[i+2]+1, indices[i+2]+1);
   // }
 
-  glGenBuffers(1, &vbo_cube_vertices);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+  glGenBuffers(1, &ibo_elements);
+  glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
 
   glGenBuffers(1, &normalbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
   glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
+
+  glGenBuffers(1, &colorbuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+  glBufferData(GL_ARRAY_BUFFER, indexed_colors.size() * sizeof(indexed_colors[0]), &indexed_colors[0], GL_STATIC_DRAW);
 
   glGenBuffers(1, &elementbuffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
@@ -373,9 +421,9 @@ int init_resources(void)
     return 0;
   }
 
-  const char* attribute_name = "coord3d";
-  attribute_coord3d = glGetAttribLocation(program, attribute_name);
-  if (attribute_coord3d == -1) {
+  const char* attribute_name = "v_coord";
+  attribute_v_coord = glGetAttribLocation(program, attribute_name);
+  if (attribute_v_coord == -1) {
     fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
     return 0;
   }
@@ -383,6 +431,13 @@ int init_resources(void)
   attribute_name = "v_normal";
   attribute_v_normal = glGetAttribLocation(program, attribute_name);
   if (attribute_v_normal == -1) {
+    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
+    return 0;
+  }
+
+  attribute_name = "v_color";
+  attribute_v_color = glGetAttribLocation(program, attribute_name);
+  if (attribute_v_color == -1) {
     fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
     return 0;
   }
@@ -405,6 +460,13 @@ int init_resources(void)
   uniform_name = "p";
   uniform_p = glGetUniformLocation(program, uniform_name);
   if (uniform_p == -1) {
+    fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
+    return 0;
+  }
+
+  uniform_name = "v_inv";
+  uniform_v_inv = glGetUniformLocation(program, uniform_name);
+  if (uniform_v_inv == -1) {
     fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
     return 0;
   }
@@ -450,6 +512,9 @@ void onIdle() {
     last_my = cur_my;
   }
 
+  glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
+  glm::mat4 v_inv = glm::inverse(view);
+
   glUseProgram(program);
 
   // Clock = glutGet(GLUT_ELAPSED_TIME);
@@ -484,7 +549,7 @@ void onIdle() {
 
   //   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
 
-  //   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+  //   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
   //   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
 
   //   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
@@ -494,8 +559,8 @@ void onIdle() {
   //   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
   // }
 
-  glm::mat3 m_3x3_inv_transp = glm::transpose(glm::inverse(glm::mat3(model)));
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
+  glUniformMatrix4fv(uniform_v_inv, 1, GL_FALSE, glm::value_ptr(v_inv));
   glUniformMatrix4fv(uniform_m, 1, GL_FALSE, glm::value_ptr(model * scale));
   glUniformMatrix4fv(uniform_v, 1, GL_FALSE, glm::value_ptr(view));
   glUniformMatrix4fv(uniform_p, 1, GL_FALSE, glm::value_ptr(projection));
@@ -514,10 +579,10 @@ void onDisplay()
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
   glUseProgram(program);
-  glEnableVertexAttribArray(attribute_coord3d);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+  glEnableVertexAttribArray(attribute_v_coord);
+  glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
   glVertexAttribPointer(
-                        attribute_coord3d,
+                        attribute_v_coord,
                         3,
                         GL_FLOAT,
                         GL_FALSE,
@@ -536,11 +601,22 @@ void onDisplay()
                         0
                         );
 
+  glEnableVertexAttribArray(attribute_v_color);
+  glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
+  glVertexAttribPointer(
+                        attribute_v_color,
+                        3,
+                        GL_FLOAT,
+                        GL_FALSE,
+                        0,
+                        0
+                        );
+
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
   int size; glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
   glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
-  glDisableVertexAttribArray(attribute_coord3d);
+  glDisableVertexAttribArray(attribute_v_coord);
   glDisableVertexAttribArray(attribute_v_normal);
   glutSwapBuffers();
 }
@@ -548,8 +624,9 @@ void onDisplay()
 void free_resources()
 {
   glDeleteProgram(program);
-  glDeleteBuffers(1, &vbo_cube_vertices);
+  glDeleteBuffers(1, &ibo_elements);
   glDeleteBuffers(1, &elementbuffer);
+  glDeleteBuffers(1, &colorbuffer);
   glDeleteBuffers(1, &normalbuffer);
 }
 
