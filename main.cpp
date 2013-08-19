@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include <vector>
 #include <map>
 #include <GL/glew.h>
@@ -9,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
+#include "simplex.h"
 
 GLuint program, window;
 GLint attribute_coord3d, attribute_v_normal, uniform_m, uniform_v, uniform_p, uniform_m_3x3_inv_transp;
@@ -19,6 +21,22 @@ int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
 int arcball_on = false;
 glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
 int PreviousClock, Clock, deltaT;
+
+#define CLOCKTYPE CLOCK_MONOTONIC
+/* this one should be appropriate to avoid errors on multiprocessors systems */
+
+double time_it(int (*action)(int), int arg)
+{
+  struct timespec tsi, tsf;
+
+  clock_gettime(CLOCKTYPE, &tsi);
+  action(arg);
+  clock_gettime(CLOCKTYPE, &tsf);
+
+  double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
+  long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
+  return elaps_s + ((double)elaps_ns) / 1.0e9;
+}
 
 struct PackedVertex{
   glm::vec3 pos;
@@ -141,10 +159,10 @@ void greedyMesh(int *volume, int *dimensions, std::vector<glm::vec3> & vertices,
             x[u] = i; x[v] = j;
             int du[] = {0,0,0}; du[u] = w;
             int dv[] = {0,0,0}; dv[v] = h;
-            p1 = glm::vec3(x[0], x[1], x[2]);
-            p2 = glm::vec3(x[0]+du[0], x[1]+du[1], x[2]+du[2]);
-            p3 = glm::vec3(x[0]+du[0]+dv[0], x[1]+du[1]+dv[1], x[2]+du[2]+dv[2]);
-            p4 = glm::vec3(x[0] +dv[0], x[1] +dv[1], x[2] +dv[2]);
+            p1 = glm::vec3(x[0]-dimensions[0]/2, x[1]-dimensions[1]/2, x[2]-dimensions[2]/2);
+            p2 = glm::vec3(x[0]+du[0]-dimensions[0]/2, x[1]+du[1]-dimensions[1]/2, x[2]+du[2]-dimensions[2]/2);
+            p3 = glm::vec3(x[0]+du[0]+dv[0]-dimensions[0]/2, x[1]+du[1]+dv[1]-dimensions[1]/2, x[2]+du[2]+dv[2]-dimensions[2]/2);
+            p4 = glm::vec3(x[0] +dv[0] -dimensions[0]/2, x[1] +dv[1]-dimensions[1]/2, x[2] +dv[2]-dimensions[2]/2);
 
             if(flip_normal){
               vertices.push_back(p3);
@@ -260,12 +278,20 @@ int cube_func(int i, int j, int k) {
 }
 
 int hole_func(int i, int j, int k) {
-  if (abs(i-7) > 3 || abs(j-7) > 3)
+  if (abs(i-4) > 2 || abs(j-4) > 2) {
     return 1;
+  } else {
+    return false;
+  }
 }
 
 int hill_func(int i, int j, int k) {
-  if (j <= 16 * exp(-(i*i + k*k) / 64.0))
+  if (j <= 32 * exp(-(i*i + k*k) / 512.0))
+    return 1;
+}
+
+int noise_func(int i, int j, int k) {
+  if (pow(simplex_noise(1, i*5, j*5, k*5),3)>=1.1)
     return 1;
 }
 
@@ -281,42 +307,59 @@ int init_resources(void)
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
 
   // cube
-  int l[] = { 0, 0, 0 };
-  int h[] = { 2, 2, 2 };
+  // int l[] = { 0, 0, 0 };
+  // int h[] = { 4, 4, 2 };
 
   // hole
   // int l[] = { 0, 0, 0 };
-  // int h[] = { 16, 16, 1 };
+  // int h[] = { 8, 8, 2 };
 
   // hill
-  // int l[] = { -16, 0, -16 };
-  // int h[] = { 16, 16, 16 };
+  int l[] = { 0, 0, 0 };
+  int h[] = { 32, 32, 32 };
 
   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
   int size = d[0]*d[1]*d[2];
-  int volume[size];
+  int volume[size]; // = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
-  makeVoxels(l, h, cube_func, volume);
+  makeVoxels(l, h, hill_func, volume);
 
   std::vector<glm::vec3> vertices;
   std::vector<glm::vec3> normals;
+
+  struct timespec tsi, tsf;
+
+  clock_gettime(CLOCKTYPE, &tsi);
   greedyMesh(volume, d, vertices, normals);
+  clock_gettime(CLOCKTYPE, &tsf);
+
+  double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
+  long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
+
+  fprintf(stderr, "greedyMesh takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
+
   std::vector<glm::vec3> indexed_vertices;
   std::vector<glm::vec3> indexed_normals;
 
+  clock_gettime(CLOCKTYPE, &tsi);
   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
+  clock_gettime(CLOCKTYPE, &tsf);
+  elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
+  elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
-  for(int i=0; i<indexed_normals.size(); i++) {
-    fprintf(stderr, "v %f %f %f\n", indexed_vertices[i].x, indexed_vertices[i].y, indexed_vertices[i].z);
-  }
+  fprintf(stderr, "indexVBO takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
 
-  for(int i=0; i<indexed_normals.size(); i++) {
-    fprintf(stderr, "vn %f %f %f\n", indexed_normals[i].x, indexed_normals[i].y, indexed_normals[i].z);
-  }
+  // for(int i=0; i<indexed_normals.size(); i++) {
+  //   fprintf(stderr, "v %f %f %f\n", indexed_vertices[i].x, indexed_vertices[i].y, indexed_vertices[i].z);
+  // }
 
-  for(int i=0; i<indices.size(); i=i+3) {
-    fprintf(stderr, "f %i//%i %i//%i %i//%i\n", indices[i]+1, indices[i]+1, indices[i+1]+1, indices[i+1]+1, indices[i+2]+1, indices[i+2]+1);
-  }
+  // for(int i=0; i<indexed_normals.size(); i++) {
+  //   fprintf(stderr, "vn %f %f %f\n", indexed_normals[i].x, indexed_normals[i].y, indexed_normals[i].z);
+  // }
+
+  // for(int i=0; i<indices.size(); i=i+3) {
+  //   fprintf(stderr, "f %i//%i %i//%i %i//%i\n", indices[i]+1, indices[i]+1, indices[i+1]+1, indices[i+1]+1, indices[i+2]+1, indices[i+2]+1);
+  // }
 
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
