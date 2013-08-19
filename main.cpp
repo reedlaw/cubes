@@ -10,7 +10,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
-#include "simplex.h"
 
 GLuint program, window;
 GLint attribute_coord3d, attribute_v_normal, uniform_m, uniform_v, uniform_p, uniform_m_3x3_inv_transp;
@@ -21,22 +20,6 @@ int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
 int arcball_on = false;
 glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
 int PreviousClock, Clock, deltaT;
-
-#define CLOCKTYPE CLOCK_MONOTONIC
-/* this one should be appropriate to avoid errors on multiprocessors systems */
-
-double time_it(int (*action)(int), int arg)
-{
-  struct timespec tsi, tsf;
-
-  clock_gettime(CLOCKTYPE, &tsi);
-  action(arg);
-  clock_gettime(CLOCKTYPE, &tsf);
-
-  double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
-  long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
-  return elaps_s + ((double)elaps_ns) / 1.0e9;
-}
 
 struct PackedVertex{
   glm::vec3 pos;
@@ -329,9 +312,9 @@ int init_resources(void)
 
   struct timespec tsi, tsf;
 
-  clock_gettime(CLOCKTYPE, &tsi);
+  clock_gettime(CLOCK_MONOTONIC, &tsi);
   greedyMesh(volume, d, vertices, normals);
-  clock_gettime(CLOCKTYPE, &tsf);
+  clock_gettime(CLOCK_MONOTONIC, &tsf);
 
   double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
   long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
@@ -341,9 +324,9 @@ int init_resources(void)
   std::vector<glm::vec3> indexed_vertices;
   std::vector<glm::vec3> indexed_normals;
 
-  clock_gettime(CLOCKTYPE, &tsi);
+  clock_gettime(CLOCK_MONOTONIC, &tsi);
   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
-  clock_gettime(CLOCKTYPE, &tsf);
+  clock_gettime(CLOCK_MONOTONIC, &tsf);
   elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
   elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
