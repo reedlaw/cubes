@@ -36,7 +36,7 @@ struct material
 };
 material mymaterial = material(
   vec4(v_color, 1.0),
-  vec4(0.8, 0.8, 0.8, 1.0),
+  vec4(0.4, 0.4, 0.4, 1.0),
   vec4(1.0, 1.0, 1.0, 1.0),
   5.0
 );
