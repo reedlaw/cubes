@@ -7,112 +7,86 @@
 
 GLuint program, window;
 GLint attribute_v_coord, attribute_v_normal, attribute_v_color, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
-GLuint ibo_elements, vbo_cube_colors, vbo_cube_texcoords, ibo_cube_elements, colorbuffer, normalbuffer, elementbuffer;
-std::vector<GLushort> indices;
+GLuint ibo_elements, colorbuffer, normalbuffer, elementbuffer;
+std::vector<ushort> indices;
+std::vector<Vertex> vertices;
 int screen_width=800, screen_height=600;
 int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
 int arcball_on = false;
 glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -25.0));
 int PreviousClock, Clock, deltaT;
 
-bool get_similar_vertex(Vertex & vertex, std::map<Vertex, unsigned short> & VertexIndex, unsigned short & result)
-{
-  std::map<Vertex, unsigned short>::iterator it = VertexIndex.find(vertex);
-  if (it == VertexIndex.end()){
-    return false;
-  } else {
-    result = it->second;
-    return true;
-  }
-}
-
-void indexVBO(std::vector<glm::vec3> & verts,
-              std::vector<glm::vec2> & uvs,
-              std::vector<glm::vec3> & colors,
-              std::vector<glm::vec3> & normals,
-              std::vector<unsigned short> & indices,
-              std::vector<glm::vec3> & indexed_verts,
-              std::vector<glm::vec3> & indexed_colors,
-              std::vector<glm::vec3> & indexed_normals)
-{
-  std::map<Vertex, unsigned short> VertexIndex;
-
-  for (int i=0; i<verts.size(); i++){
-    Vertex vertex = {verts[i], uvs[i], colors[i], normals[i]};
-    unsigned short index;
-    bool found = get_similar_vertex(vertex, VertexIndex, index);
-
-    if (found){
-      indices.push_back(index);
-    } else {
-      indexed_verts.push_back(verts[i]);
-      // indexed_uvs.push_back(uvs[i]);
-      indexed_colors.push_back(colors[i]);
-      indexed_normals.push_back(normals[i]);
-      unsigned short newindex = (unsigned short)indexed_verts.size() - 1;
-      indices.push_back(newindex);
-      VertexIndex[vertex] = newindex;
-    }
-  }
-}
-
 int init_resources(void)
 {
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
 
-  std::vector<float> volume;
+  // std::vector<float> volume;
 
   // makeVoxels(l, h, sphere_func, volume);
-
-  std::vector<Vertex> vertices;
-  std::vector<GLushort> indices;
 
   struct timespec tsi, tsf;
 
   int dimensions[3] = { 6, 6, 6 };
-  makeCellComplex(volume);
-
-  clock_gettime(CLOCK_MONOTONIC, &tsi);
-  surfaceNets(volume, dimensions, vertices, indices);
-  clock_gettime(CLOCK_MONOTONIC, &tsf);
-
-  double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
-  long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
-
-  fprintf(stderr, "surfaceNets takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
-
-  // std::vector<glm::vec3> indexed_vertices;
-  // std::vector<glm::vec3> indexed_normals;
-  // std::vector<glm::vec3> indexed_colors;
+  // makeCellComplex(volume);
 
   // clock_gettime(CLOCK_MONOTONIC, &tsi);
-  // indexVBO(vertices, colors, normals, indices, indexed_vertices, indexed_colors, indexed_normals);
+  // surfaceNets(volume, dimensions, vertices, indices);
   // clock_gettime(CLOCK_MONOTONIC, &tsf);
-  // elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
-  // elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
-  // fprintf(stderr, "indexVBO takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
+  // double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
+  // long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
-  // Create and bind a VAO
-  GLuint vao;
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
+  // fprintf(stderr, "surfaceNets takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
+
+  
+  Vertex vertex1;
+  vertex1.x=1.;
+  vertex1.y=0.;
+  vertex1.z=0.;
+  vertex1.nx=1.;
+  vertex1.ny=0.;
+  vertex1.nz=0.;
+  vertex1.r=0.;
+  vertex1.g=1.;
+  vertex1.b=0.;
+  vertex1.a=1.;
+  vertices.push_back(vertex1);
+  Vertex vertex2;
+  vertex1.x=0.;
+  vertex1.y=1.;
+  vertex1.z=0.;
+  vertex1.nx=1.;
+  vertex1.ny=0.;
+  vertex1.nz=0.;
+  vertex1.r=0.;
+  vertex1.g=1.;
+  vertex1.b=0.;
+  vertex1.a=1.;
+  vertices.push_back(vertex2);
+  Vertex vertex3;
+  vertex1.x=1.;
+  vertex1.y=1.;
+  vertex1.z=0.;
+  vertex1.nx=1.;
+  vertex1.ny=0.;
+  vertex1.nz=0.;
+  vertex1.r=0.;
+  vertex1.g=1.;
+  vertex1.b=0.;
+  vertex1.a=1.;
+  vertices.push_back(vertex3);
+
+  indices.push_back(1);
+  indices.push_back(2);
+  indices.push_back(3);
 
   glGenBuffers(1, &ibo_elements);
   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), &vertices[0], GL_STATIC_DRAW);
-
-  // glGenBuffers(1, &normalbuffer);
-  // glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-  // glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(normals[0]), &normals[0], GL_STATIC_DRAW);
-
-  // glGenBuffers(1, &colorbuffer);
-  // glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
-  // glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(colors[0]), &colors[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
 
   glGenBuffers(1, &elementbuffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(ushort), &indices[0], GL_STATIC_DRAW);
 
   GLint link_ok = GL_FALSE;
 
@@ -188,6 +162,8 @@ int init_resources(void)
     return 0;
   }
 
+  glUseProgram(program);
+
   return 1;
 }
 
@@ -227,48 +203,6 @@ void onIdle() {
 
   glUseProgram(program);
 
-  // Clock = glutGet(GLUT_ELAPSED_TIME);
-  // deltaT = Clock - PreviousClock;
-  // if (deltaT < 35) {
-  // } else {
-  //   PreviousClock = Clock;
-  //   // cube
-  //   // int l[] = { 0, 0, 0 };
-  //   // int h[] = { 16, 16, 16 };
-
-  //   // hole
-  //   // int l[] = { 0, 0, 0 };
-  //   // int h[] = { 16, 16, 1 };
-
-  //   // hill
-  //   int l[] = { -16, 0, -16 };
-  //   int h[] = { 16, 16, 16 };
-
-  //   int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
-  //   int size = d[0]*d[1]*d[2];
-  //   int volume[size];
-
-  //   makeVoxels(l, h, anim_hill_func, volume);
-
-  //   std::vector<glm::vec3> vertices;
-  //   std::vector<glm::vec3> normals;
-  //   greedyMesh(volume, d, vertices, normals);
-  //   std::vector<glm::vec3> indexed_vertices;
-  //   std::vector<glm::vec3> indexed_normals;
-  //   indices.clear();
-
-  //   indexVBO(vertices, normals, indices, indexed_vertices, indexed_normals);
-
-  //   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
-  //   glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(indexed_vertices[0]), &indexed_vertices[0], GL_STATIC_DRAW);
-
-  //   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-  //   glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(indexed_normals[0]), &indexed_normals[0], GL_STATIC_DRAW);
-
-  //   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-  //   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
-  // }
-
   glUniformMatrix3fv(uniform_m_3x3_inv_transp, 1, GL_FALSE, glm::value_ptr(m_3x3_inv_transp));
   glUniformMatrix4fv(uniform_v_inv, 1, GL_FALSE, glm::value_ptr(v_inv));
   glUniformMatrix4fv(uniform_m, 1, GL_FALSE, glm::value_ptr(model * scale));
@@ -288,18 +222,17 @@ void onDisplay()
   glClearColor(0.0, 0.0, 0.0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-  glUseProgram(program);
-  glEnableVertexAttribArray(attribute_v_coord);
+  glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
   glVertexAttribPointer(
                         attribute_v_coord,
                         3,
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        (void*)offsetof(Vertex, pos)
+                        BUFFER_OFFSET(0)
                         );
+  glEnableVertexAttribArray(attribute_v_coord);
 
-  glEnableVertexAttribArray(attribute_v_normal);
   glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
   glVertexAttribPointer(
                         attribute_v_normal,
@@ -307,31 +240,33 @@ void onDisplay()
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        (void*)offsetof(Vertex, normal)
+                        BUFFER_OFFSET(sizeof(float)*3)
                         );
+  glEnableVertexAttribArray(attribute_v_normal);
 
-  glEnableVertexAttribArray(attribute_v_color);
   glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glVertexAttribPointer(
                         attribute_v_color,
-                        3,
+                        4,
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        (void*)offsetof(Vertex, color)
+                        BUFFER_OFFSET(sizeof(float)*6)
                         );
+  glEnableVertexAttribArray(attribute_v_color);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
   int size; glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
   glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
 
-  glDisableVertexAttribArray(attribute_v_coord);
-  glDisableVertexAttribArray(attribute_v_normal);
   glutSwapBuffers();
 }
 
 void free_resources()
 {
+  glDisableVertexAttribArray(attribute_v_coord);
+  glDisableVertexAttribArray(attribute_v_normal);
+  glDisableVertexAttribArray(attribute_v_color);
   glDeleteProgram(program);
   glDeleteBuffers(1, &ibo_elements);
   glDeleteBuffers(1, &elementbuffer);
@@ -394,7 +329,7 @@ int main(int argc, char* argv[])
       glEnable(GL_BLEND);
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glutMouseFunc(onMouse);
       glutMotionFunc(onMotion);
       glutKeyboardFunc(keyboard);

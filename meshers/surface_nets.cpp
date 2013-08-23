@@ -5,7 +5,7 @@ int edge_table[256] = { 0, 7, 25, 30, 98, 101, 123, 124, 168, 175, 177, 182, 202
 
 void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Vertex> & vertices, std::vector<GLushort> & indices)
 {
-  glm::vec3 color_table[3] = { glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0) };
+  GLfloat color_table[3][3] = { { 1.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 1.0 } };
 
   int n = 0;
   int x[3] = { 0, 0, 0 };
@@ -88,10 +88,13 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
         // add vertex to buffer
         buffer[m] = vertices.size();
 
-        glm::vec3 pos = glm::vec3(v[0], v[1], v[2]);
-        glm::vec2 uv = glm::vec2(0., 0.);
-        glm::vec3 color = color_table[mask];
-        glm::vec3 normal = glm::vec3(1., 0., 0.);
+        Vertex vertex;
+        GLfloat pos[3] = { v[0], v[1], v[2] };
+        memcpy(vertex.pos, pos, sizeof(pos));
+        memcpy(vertex.color, color_table[1], sizeof(color_table[1]));
+        GLfloat normal[3] = { 1., 0., 0. };
+        memcpy(vertex.normal, normal, sizeof(normal));
+        vertices.push_back(vertex);
 
         // make faces
         for(int i=0; i<3; i++) {
@@ -125,14 +128,11 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
             indices.push_back(buffer[m-du-dv]);
           }
         }
-
-        Vertex vertex = { pos, uv, color, normal };
-        vertices.push_back(vertex);
       }
     }
   }
   for(int i=0; i<vertices.size(); i++) {
-    fprintf(stderr, "v %f %f %f\n", vertices[i].pos.x, vertices[i].pos.y, vertices[i].pos.z);
+    fprintf(stderr, "v %f %f %f\n", vertices[i].pos[0], vertices[i].pos[1], vertices[i].pos[2]);
   }
 
   // for(int i=0; i<vertices.size(); i++) {

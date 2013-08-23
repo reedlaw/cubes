@@ -1,8 +1,8 @@
 #version 120
 
 attribute vec4 v_coord;
-attribute vec3 v_color;
 attribute vec3 v_normal;
+attribute vec3 v_color;
 uniform mat4 m, v, p;
 uniform mat3 m_3x3_inv_transp;
 uniform mat4 v_inv;

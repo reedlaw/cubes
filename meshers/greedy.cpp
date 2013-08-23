@@ -82,7 +82,6 @@ void greedyMesh(float *volume, int *dimensions, std::vector<Vertex> & vertices, 
             p3 = glm::vec3(x[0]+du[0]+dv[0]-dimensions[0]/2, x[1]+du[1]+dv[1]-dimensions[1]/2, x[2]+du[2]+dv[2]-dimensions[2]/2);
             p4 = glm::vec3(x[0] +dv[0] -dimensions[0]/2, x[1] +dv[1]-dimensions[1]/2, x[2] +dv[2]-dimensions[2]/2);
 
-            glm::vec2 uv = glm::vec2(0., 0.);
             glm::vec3 color = color_table[c-1];
 
             vecU = p2 - p1;
@@ -92,30 +91,30 @@ void greedyMesh(float *volume, int *dimensions, std::vector<Vertex> & vertices, 
             normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
 
             if(flip_normal){
-              Vertex vertex1 = { p3, uv, color, normal };
+              Vertex vertex1 = { p3, color, normal };
               vertices.push_back(vertex1);
-              Vertex vertex2 = { p2, uv, color, normal };
+              Vertex vertex2 = { p2, color, normal };
               vertices.push_back(vertex2);
-              Vertex vertex3 = { p1, uv, color, normal };
+              Vertex vertex3 = { p1, color, normal };
               vertices.push_back(vertex3);
-              Vertex vertex4 = { p3, uv, color, normal };
+              Vertex vertex4 = { p3, color, normal };
               vertices.push_back(vertex4);
-              Vertex vertex5 = { p1, uv, color, normal };
+              Vertex vertex5 = { p1, color, normal };
               vertices.push_back(vertex5);
-              Vertex vertex6 = { p4, uv, color, normal };
+              Vertex vertex6 = { p4, color, normal };
               vertices.push_back(vertex6);
             } else {
-              Vertex vertex1 = { p1, uv, color, normal };
+              Vertex vertex1 = { p1, color, normal };
               vertices.push_back(vertex1);
-              Vertex vertex2 = { p2, uv, color, normal };
+              Vertex vertex2 = { p2, color, normal };
               vertices.push_back(vertex2);
-              Vertex vertex3 = { p3, uv, color, normal };
+              Vertex vertex3 = { p3, color, normal };
               vertices.push_back(vertex3);
-              Vertex vertex4 = { p4, uv, color, normal };
+              Vertex vertex4 = { p4, color, normal };
               vertices.push_back(vertex4);
-              Vertex vertex5 = { p1, uv, color, normal };
+              Vertex vertex5 = { p1, color, normal };
               vertices.push_back(vertex5);
-              Vertex vertex6 = { p3, uv, color, normal };
+              Vertex vertex6 = { p3, color, normal };
               vertices.push_back(vertex6);
             }
 
