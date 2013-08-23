@@ -20,65 +20,23 @@ int init_resources(void)
 {
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
 
-  // std::vector<float> volume;
+  std::vector<float> volume;
 
   // makeVoxels(l, h, sphere_func, volume);
 
   struct timespec tsi, tsf;
 
   int dimensions[3] = { 6, 6, 6 };
-  // makeCellComplex(volume);
+  makeCellComplex(volume);
 
-  // clock_gettime(CLOCK_MONOTONIC, &tsi);
-  // surfaceNets(volume, dimensions, vertices, indices);
-  // clock_gettime(CLOCK_MONOTONIC, &tsf);
+  clock_gettime(CLOCK_MONOTONIC, &tsi);
+  surfaceNets(volume, dimensions, vertices, indices);
+  clock_gettime(CLOCK_MONOTONIC, &tsf);
 
-  // double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
-  // long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
+  double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
+  long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
-  // fprintf(stderr, "surfaceNets takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
-
-  
-  Vertex vertex1;
-  vertex1.x=1.;
-  vertex1.y=0.;
-  vertex1.z=0.;
-  vertex1.nx=1.;
-  vertex1.ny=0.;
-  vertex1.nz=0.;
-  vertex1.r=0.;
-  vertex1.g=1.;
-  vertex1.b=0.;
-  vertex1.a=1.;
-  vertices.push_back(vertex1);
-  Vertex vertex2;
-  vertex1.x=0.;
-  vertex1.y=1.;
-  vertex1.z=0.;
-  vertex1.nx=1.;
-  vertex1.ny=0.;
-  vertex1.nz=0.;
-  vertex1.r=0.;
-  vertex1.g=1.;
-  vertex1.b=0.;
-  vertex1.a=1.;
-  vertices.push_back(vertex2);
-  Vertex vertex3;
-  vertex1.x=1.;
-  vertex1.y=1.;
-  vertex1.z=0.;
-  vertex1.nx=1.;
-  vertex1.ny=0.;
-  vertex1.nz=0.;
-  vertex1.r=0.;
-  vertex1.g=1.;
-  vertex1.b=0.;
-  vertex1.a=1.;
-  vertices.push_back(vertex3);
-
-  indices.push_back(1);
-  indices.push_back(2);
-  indices.push_back(3);
+  fprintf(stderr, "surfaceNets takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
 
   glGenBuffers(1, &ibo_elements);
   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
@@ -162,8 +120,6 @@ int init_resources(void)
     return 0;
   }
 
-  glUseProgram(program);
-
   return 1;
 }
 
@@ -222,7 +178,10 @@ void onDisplay()
   glClearColor(0.0, 0.0, 0.0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
+  glUseProgram(program);
+
   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
+
   glVertexAttribPointer(
                         attribute_v_coord,
                         3,
@@ -233,7 +192,6 @@ void onDisplay()
                         );
   glEnableVertexAttribArray(attribute_v_coord);
 
-  glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
   glVertexAttribPointer(
                         attribute_v_normal,
                         3,
@@ -244,7 +202,6 @@ void onDisplay()
                         );
   glEnableVertexAttribArray(attribute_v_normal);
 
-  glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
   glVertexAttribPointer(
                         attribute_v_color,
                         4,
@@ -329,7 +286,7 @@ int main(int argc, char* argv[])
       glEnable(GL_BLEND);
       glEnable(GL_DEPTH_TEST);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       glutMouseFunc(onMouse);
       glutMotionFunc(onMotion);
       glutKeyboardFunc(keyboard);

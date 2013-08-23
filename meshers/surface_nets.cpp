@@ -88,12 +88,17 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
         // add vertex to buffer
         buffer[m] = vertices.size();
 
-        Vertex vertex;
-        GLfloat pos[3] = { v[0], v[1], v[2] };
-        memcpy(vertex.pos, pos, sizeof(pos));
-        memcpy(vertex.color, color_table[1], sizeof(color_table[1]));
-        GLfloat normal[3] = { 1., 0., 0. };
-        memcpy(vertex.normal, normal, sizeof(normal));
+        struct Vertex vertex;
+        vertex.x = v[0];
+        vertex.y = v[1];
+        vertex.z = v[2];
+        vertex.nx = 1.0;
+        vertex.ny = 1.0;
+        vertex.nz = 0.0;
+        vertex.r = color_table[1][0];
+        vertex.g = color_table[1][1];
+        vertex.b = color_table[1][2];
+        vertex.a = 1.0;
         vertices.push_back(vertex);
 
         // make faces
@@ -132,7 +137,7 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
     }
   }
   for(int i=0; i<vertices.size(); i++) {
-    fprintf(stderr, "v %f %f %f\n", vertices[i].pos[0], vertices[i].pos[1], vertices[i].pos[2]);
+    fprintf(stderr, "v %f %f %f\n", vertices[i].x, vertices[i].y, vertices[i].z);
   }
 
   // for(int i=0; i<vertices.size(); i++) {
