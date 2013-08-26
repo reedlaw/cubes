@@ -92,9 +92,6 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
         vertex.x = v[0];
         vertex.y = v[1];
         vertex.z = v[2];
-        vertex.nx = 1.0;
-        vertex.ny = 1.0;
-        vertex.nz = 0.0;
         vertex.r = color_table[1][0];
         vertex.g = color_table[1][1];
         vertex.b = color_table[1][2];
@@ -116,40 +113,61 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
 
           int du = R[iu];
           int dv = R[iv];
+          int i1, i2, i3, i4;
 
           if (mask & 1) {
-            indices.push_back(buffer[m]);
-            indices.push_back(buffer[m-du]);
-            indices.push_back(buffer[m-du-dv]);
-            indices.push_back(buffer[m-dv]);
-            indices.push_back(buffer[m]);
-            indices.push_back(buffer[m-du-dv]);
+            i1 = buffer[m];
+            i2 = buffer[m-du];
+            i3 = buffer[m-du-dv];
+            i4 = buffer[m-dv];
           } else {
-            indices.push_back(buffer[m]);
-            indices.push_back(buffer[m-dv]);
-            indices.push_back(buffer[m-du-dv]);
-            indices.push_back(buffer[m-du]);
-            indices.push_back(buffer[m]);
-            indices.push_back(buffer[m-du-dv]);
+            i1 = buffer[m];
+            i2 = buffer[m-dv];
+            i3 = buffer[m-du-dv];
+            i4 = buffer[m-du];
           }
+          float ux = vertices[i2].x - vertices[i1].x;
+          float uy = vertices[i2].y - vertices[i1].y;
+          float uz = vertices[i2].z - vertices[i1].z;
+          float vx = vertices[i3].x - vertices[i1].x;
+          float vy = vertices[i3].y - vertices[i1].y;
+          float vz = vertices[i3].z - vertices[i1].z;
+          vertices[i1].nx = (uy * vz) - (uz * vy);
+          vertices[i1].ny = (uz * vx) - (ux * vz);
+          vertices[11].nz = (ux * vy) - (uy * vx);
+          vertices[i2].nx = (uy * vz) - (uz * vy);
+          vertices[i2].ny = (uz * vx) - (ux * vz);
+          vertices[12].nz = (ux * vy) - (uy * vx);
+          vertices[i3].nx = (uy * vz) - (uz * vy);
+          vertices[i3].ny = (uz * vx) - (ux * vz);
+          vertices[13].nz = (ux * vy) - (uy * vx);
+          vertices[i4].nx = (uy * vz) - (uz * vy);
+          vertices[i4].ny = (uz * vx) - (ux * vz);
+          vertices[14].nz = (ux * vy) - (uy * vx);
+          indices.push_back(i1);
+          indices.push_back(i2);
+          indices.push_back(i3);
+          indices.push_back(i4);
+          indices.push_back(i1);
+          indices.push_back(i3);
         }
       }
     }
   }
-  for(int i=0; i<vertices.size(); i++) {
-    fprintf(stderr, "v %f %f %f\n", vertices[i].x, vertices[i].y, vertices[i].z);
-  }
+  // for(int i=0; i<vertices.size(); i++) {
+  //   fprintf(stderr, "v %f %f %f\n", vertices[i].x, vertices[i].y, vertices[i].z);
+  // }
 
   // for(int i=0; i<vertices.size(); i++) {
-  //   fprintf(stderr, "vn %f %f %f\n", vertices[i].normal.x, vertices[i].normal.y, vertices[i].normal.z);
+  //   fprintf(stderr, "vn %f %f %f\n", vertices[i].nx, vertices[i].ny, vertices[i].nz);
   // }
 
   // for(int i=0; i<indices.size(); i=i+3) {
   //   fprintf(stderr, "f %i//%i %i//%i %i//%i\n", indices[i]+1, indices[i]+1, indices[i+1]+1, indices[i+1]+1, indices[i+2]+1, indices[i+2]+1);
   // }
 
-  for(int i=0; i<indices.size(); i=i+3) {
-    fprintf(stderr, "f %i %i %i\n", indices[i]+1, indices[i+1]+1, indices[i+2]+1);
-  }
+  // for(int i=0; i<indices.size(); i=i+3) {
+  //   fprintf(stderr, "f %i %i %i\n", indices[i]+1, indices[i+1]+1, indices[i+2]+1);
+  // }
 
 }

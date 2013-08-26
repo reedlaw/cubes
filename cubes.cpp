@@ -7,7 +7,7 @@
 
 GLuint program, window;
 GLint attribute_v_coord, attribute_v_normal, attribute_v_color, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
-GLuint ibo_elements, colorbuffer, normalbuffer, elementbuffer;
+GLuint ibo_elements, elementbuffer;
 std::vector<ushort> indices;
 std::vector<Vertex> vertices;
 int screen_width=800, screen_height=600;
@@ -227,8 +227,6 @@ void free_resources()
   glDeleteProgram(program);
   glDeleteBuffers(1, &ibo_elements);
   glDeleteBuffers(1, &elementbuffer);
-  glDeleteBuffers(1, &colorbuffer);
-  glDeleteBuffers(1, &normalbuffer);
 }
 
 void onMouse(int button, int state, int x, int y)
