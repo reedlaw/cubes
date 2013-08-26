@@ -8,7 +8,7 @@
 GLuint program, window;
 GLint attribute_v_coord, attribute_v_normal, attribute_v_color, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
 GLuint ibo_elements, elementbuffer;
-std::vector<ushort> indices;
+std::vector<GLushort> indices;
 std::vector<Vertex> vertices;
 int screen_width=800, screen_height=600;
 int last_mx = 0, last_my = 0, cur_mx = 0, cur_my = 0;
@@ -22,15 +22,16 @@ int init_resources(void)
 
   std::vector<float> volume;
 
-  // makeVoxels(l, h, sphere_func, volume);
-
   struct timespec tsi, tsf;
 
-  int dimensions[3] = { 6, 6, 6 };
+  int dimensions[3] = { 10, 10, 10 };
   makeCellComplex(volume);
+  // for(int i=0; i<volume.size(); i++) {
+  //   fprintf(stderr, "%f, ", volume[i]);
+  // }
 
   clock_gettime(CLOCK_MONOTONIC, &tsi);
-  surfaceNets(volume, dimensions, vertices, indices);
+  greedyMesh(volume, dimensions, vertices, indices);
   clock_gettime(CLOCK_MONOTONIC, &tsf);
 
   double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
@@ -138,9 +139,9 @@ glm::vec3 get_arcball_vector(int x, int y)
 }
 
 void onIdle() {
-  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(0.5f));
-  glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -16.0), glm::vec3(0.0, 1.0, 0.0));
-  glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 1.0f, 100.0f);
+  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(1.5f));
+  glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -12.0), glm::vec3(0.0, 1.0, 0.0));
+  glm::mat4 projection = glm::perspective(41.0f, 1.0f*screen_width/screen_height, 1.0f, 100.0f);
 
   if (cur_mx != last_mx || cur_my != last_my) {
     glm::vec3 va = get_arcball_vector(last_mx, last_my);

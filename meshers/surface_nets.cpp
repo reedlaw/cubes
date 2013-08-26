@@ -89,12 +89,12 @@ void surfaceNets(std::vector<float> & volume, int *dimensions, std::vector<Verte
         buffer[m] = vertices.size();
 
         struct Vertex vertex;
-        vertex.x = v[0];
-        vertex.y = v[1];
-        vertex.z = v[2];
-        vertex.r = color_table[1][0];
-        vertex.g = color_table[1][1];
-        vertex.b = color_table[1][2];
+        vertex.x = v[0] - dimensions[0]/2;
+        vertex.y = v[1] - dimensions[1]/2;
+        vertex.z = v[2] - dimensions[2]/2;
+        vertex.r = 1.0;
+        vertex.g = 0.0;
+        vertex.b = 0.0;
         vertex.a = 1.0;
         vertices.push_back(vertex);
 
