@@ -6,7 +6,6 @@ void makeVoxels(int *l, int *h, int (*f)(int, int, int), int *volume) {
     for(int j=l[1]; j<h[1]; j++) {
       for(int i=l[0]; i<h[0]; i++) {
         volume[n] = (*f)(i,j,k);
-        fprintf(stderr, "%i, ", volume[n]);
         n++;
       }
     }
@@ -63,8 +62,8 @@ int anim_hill_func(int i, int j, int k) {
 }
 
 // cube
-int l[] = { 0, 0, 0 };
-int h[] = { 6, 6, 6 };
+// int l[] = { 0, 0, 0 };
+// int h[] = { 6, 6, 6 };
 
 // hole
 // int l[] = { 0, 0, 0 };
@@ -78,6 +77,6 @@ int h[] = { 6, 6, 6 };
 // int l[] = { -2, -2, -2 };
 // int h[] = { 2, 2, 2 };
 
-int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
-int size = d[0]*d[1]*d[2];
+// int d[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
+// int size = d[0]*d[1]*d[2];
 // int volume[size]; // = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};

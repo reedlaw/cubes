@@ -4,18 +4,12 @@ bool is_near(float v1, float v2){
   return fabs(v1-v2) < 0.01f;
 }
 
-float findVoxel(int i, int j, int k, std::vector<float> & volume, int *dimensions) {
-  if (volume[i + dimensions[0] * (j + dimensions[1] * k)] < 0.0) {
-    return 1;
-  } else {
-    return 0;
-  }
+int findVoxel(int i, int j, int k, int *volume, int *dimensions) {
+  return volume[i + dimensions[0] * (j + dimensions[1] * k)];
 }
 
-void greedyMesh(std::vector<float> & volume, int *dimensions, std::vector<Vertex> & vertices, std::vector<GLushort> & indices)
+void greedyMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, std::vector<GLushort> & indices)
 {
-  glm::vec3 color_table[3] = { glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0) };
-
   glm::vec3 p1, p2, p3, p4, vecU, vecV, normal;
   //Sweep over 3-axes
   for(int d=0; d<3; d++) {
@@ -36,18 +30,8 @@ void greedyMesh(std::vector<float> & volume, int *dimensions, std::vector<Vertex
       //Compute mask
       int n = 0;
       for(x[v]=0; x[v]<dimensions[v]; x[v]++) {
-        for(x[u]=0; x[u]<dimensions[u]; x[u]++, n++) {
-          float a = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : 0);
-          float b = (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : 0);
-          bool bool_a = static_cast<bool>(a);
-          bool bool_b = static_cast<bool>(b);
-          if (bool_a == bool_b) {
-            mask[n] = 0;
-          } else if(bool_a) {
-            mask[n] = a;
-          } else {
-            mask[n] = b;
-          }
+        for(x[u]=0; x[u]<dimensions[u]; x[u]++) {
+          mask[n++] = (0 <= x[d] ? findVoxel(x[0], x[1], x[2], volume, dimensions) : false) != (x[d] < dimensions[d]-1 ? findVoxel(x[0]+q[0], x[1]+q[1], x[2]+q[2], volume, dimensions) : false);
         }
       }
 
@@ -91,8 +75,6 @@ void greedyMesh(std::vector<float> & volume, int *dimensions, std::vector<Vertex
             p3 = glm::vec3(x[0]+du[0]+dv[0]-dimensions[0]/2, x[1]+du[1]+dv[1]-dimensions[1]/2, x[2]+du[2]+dv[2]-dimensions[2]/2);
             p4 = glm::vec3(x[0] +dv[0] -dimensions[0]/2, x[1] +dv[1]-dimensions[1]/2, x[2] +dv[2]-dimensions[2]/2);
 
-            glm::vec3 color = color_table[c-1];
-
             vecU = p2 - p1;
             vecV = p3 - p1;
             normal.x = (vecU.y * vecV.z) - (vecU.z * vecV.y);
@@ -101,35 +83,44 @@ void greedyMesh(std::vector<float> & volume, int *dimensions, std::vector<Vertex
 
             if(flip_normal){
               Vertex vertex1 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex1);
               Vertex vertex2 = { p2.x, p2.y, p2.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex2);
               Vertex vertex3 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex3);
               Vertex vertex4 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex4);
               Vertex vertex5 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex5);
               Vertex vertex6 = { p4.x, p4.y, p4.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex6);
             } else {
               Vertex vertex1 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex1);
               Vertex vertex2 = { p2.x, p2.y, p2.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex2);
               Vertex vertex3 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex3);
               Vertex vertex4 = { p4.x, p4.y, p4.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex4);
               Vertex vertex5 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex5);
               Vertex vertex6 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              indices.push_back(vertices.size());
               vertices.push_back(vertex6);
             }
 
-            for(int c=1; c<7; c++) {
-              indices.push_back(n*6+c);
-            }
             //Zero-out mask
             for(int l=0; l<h; l++) {
               for(int k=0; k<w; k++) {
@@ -150,11 +141,11 @@ void greedyMesh(std::vector<float> & volume, int *dimensions, std::vector<Vertex
     }
   }
   // for(int i=0; i<vertices.size(); i++) {
-  //   fprintf(stderr, "v %f %f %f\n", vertices[i].pos.x, vertices[i].pos.y, vertices[i].pos.z);
+  //   fprintf(stderr, "v %f %f %f\n", vertices[i].x, vertices[i].y, vertices[i].z);
   // }
 
   // for(int i=0; i<vertices.size(); i++) {
-  //   fprintf(stderr, "vn %f %f %f\n", vertices[i].normal.x, vertices[i].normal.y, vertices[i].normal.z);
+  //   fprintf(stderr, "vn %f %f %f\n", vertices[i].nx, vertices[i].ny, vertices[i].nz);
   // }
 
   // for(int i=0; i<indices.size(); i=i+3) {

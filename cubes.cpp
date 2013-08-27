@@ -1,9 +1,10 @@
 #include "cubes.h"
 #include "generators/cells.h"
-#include "utils/shader_utils.h"
+#include "generators/voxels.h"
 #include "meshers/greedy.h"
 #include "meshers/stupid.h"
 #include "meshers/surface_nets.h"
+#include "utils/shader_utils.h"
 
 GLuint program, window;
 GLint attribute_v_coord, attribute_v_normal, attribute_v_color, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
@@ -20,16 +21,24 @@ int init_resources(void)
 {
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
 
-  std::vector<float> volume;
+  // hill
+  int l[] = { 0, 0, 0 };
+  int h[] = { 32, 32, 32 };
+  int dimensions[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
+  int size = dimensions[0]*dimensions[1]*dimensions[2];
+  int volume[size];
+  makeVoxels(l, h, hill_func, volume);
 
-  struct timespec tsi, tsf;
+  // std::vector<float> cells
+  // int dimensions[3] = { 32, 32, 32 };
+  // makeCellComplex(cells);
+  // surfaceNets(cells, dimensions, vertices, indices);
 
-  int dimensions[3] = { 10, 10, 10 };
-  makeCellComplex(volume);
-  // for(int i=0; i<volume.size(); i++) {
-  //   fprintf(stderr, "%f, ", volume[i]);
+  // for(int i=0; i<size; i++) {
+  //   fprintf(stderr, "%i, ", volume[i]);
   // }
 
+  struct timespec tsi, tsf;
   clock_gettime(CLOCK_MONOTONIC, &tsi);
   greedyMesh(volume, dimensions, vertices, indices);
   clock_gettime(CLOCK_MONOTONIC, &tsf);
@@ -37,7 +46,7 @@ int init_resources(void)
   double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
   long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
-  fprintf(stderr, "surfaceNets takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
+  fprintf(stderr, "greedyMesh takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
 
   glGenBuffers(1, &ibo_elements);
   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
@@ -139,7 +148,7 @@ glm::vec3 get_arcball_vector(int x, int y)
 }
 
 void onIdle() {
-  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(1.5f));
+  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(0.5f));
   glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -12.0), glm::vec3(0.0, 1.0, 0.0));
   glm::mat4 projection = glm::perspective(41.0f, 1.0f*screen_width/screen_height, 1.0f, 100.0f);
 
