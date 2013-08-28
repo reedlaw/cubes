@@ -74,6 +74,7 @@ void greedyMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
             p2 = glm::vec3(x[0]+du[0]-dimensions[0]/2, x[1]+du[1]-dimensions[1]/2, x[2]+du[2]-dimensions[2]/2);
             p3 = glm::vec3(x[0]+du[0]+dv[0]-dimensions[0]/2, x[1]+du[1]+dv[1]-dimensions[1]/2, x[2]+du[2]+dv[2]-dimensions[2]/2);
             p4 = glm::vec3(x[0] +dv[0] -dimensions[0]/2, x[1] +dv[1]-dimensions[1]/2, x[2] +dv[2]-dimensions[2]/2);
+            float ao = 1.0;
 
             vecU = p2 - p1;
             vecV = p3 - p1;
@@ -82,41 +83,41 @@ void greedyMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
             normal.z = (vecU.x * vecV.y) - (vecU.y * vecV.x);
 
             if(flip_normal){
-              Vertex vertex1 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex1 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex1);
-              Vertex vertex2 = { p2.x, p2.y, p2.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex2 = { p2.x, p2.y, p2.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex2);
-              Vertex vertex3 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex3 = { p1.x, p1.y, p1.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex3);
-              Vertex vertex4 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex4 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex4);
-              Vertex vertex5 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex5 = { p1.x, p1.y, p1.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex5);
-              Vertex vertex6 = { p4.x, p4.y, p4.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex6 = { p4.x, p4.y, p4.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex6);
             } else {
-              Vertex vertex1 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex1 = { p1.x, p1.y, p1.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex1);
-              Vertex vertex2 = { p2.x, p2.y, p2.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex2 = { p2.x, p2.y, p2.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex2);
-              Vertex vertex3 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex3 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex3);
-              Vertex vertex4 = { p4.x, p4.y, p4.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex4 = { p4.x, p4.y, p4.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex4);
-              Vertex vertex5 = { p1.x, p1.y, p1.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex5 = { p1.x, p1.y, p1.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex5);
-              Vertex vertex6 = { p3.x, p3.y, p3.z, normal.x, normal.y, normal.z, 0.0, 1.0, 0.0 };
+              Vertex vertex6 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, ao, 1.0, 0.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex6);
             }

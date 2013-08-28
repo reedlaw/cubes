@@ -1,12 +1,14 @@
 #version 120
 
 attribute vec4 v_coord;
-attribute vec3 v_normal;
-attribute vec3 v_color;
+attribute vec4 v_normal;
+attribute vec4 v_color;
 uniform mat4 m, v, p;
 uniform mat3 m_3x3_inv_transp;
 uniform mat4 v_inv;
 varying vec4 color;
+varying vec4 normal;
+varying float ambientOcclusion;
 
 struct lightSource
 {
@@ -35,7 +37,7 @@ struct material
   float shininess;
 };
 material mymaterial = material(
-  vec4(v_color, 1.0),
+  v_color,
   vec4(0.4, 0.4, 0.4, 1.0),
   vec4(1.0, 1.0, 1.0, 1.0),
   5.0
@@ -44,7 +46,7 @@ material mymaterial = material(
 void main(void)
 {
   mat4 mvp = p*v*m;
-  vec3 normalDirection = normalize(m_3x3_inv_transp * v_normal);
+  vec3 normalDirection = normalize(m_3x3_inv_transp * v_normal.xyz);
   vec3 viewDirection = normalize(vec3(v_inv * vec4(0.0, 0.0, 0.0, 1.0) - m * v_coord));
   vec3 lightDirection;
   float attenuation;
@@ -95,6 +97,7 @@ void main(void)
               mymaterial.shininess);
     }
 
+  normal = v_normal;
   color = vec4(ambientLighting + diffuseReflection + specularReflection, 1.0);
   gl_Position = mvp * v_coord;
 }

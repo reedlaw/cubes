@@ -17,12 +17,9 @@
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 struct Vertex{
-  float x, y, z;        //Vertex
-  float nx, ny, nz;     //Normal
+  float x, y, z, ao;        //Vertex
+  float nx, ny, nz, type;     //Normal
   float r, g, b, a;     //Color
-  float s0, t0;         //Texcoord0
-  float s1, t1;         //Texcoord1
-  float s2, t2;         //Texcoord2
 };
 
 bool is_near(float v1, float v2);

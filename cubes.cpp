@@ -194,7 +194,7 @@ void onDisplay()
 
   glVertexAttribPointer(
                         attribute_v_coord,
-                        3,
+                        4,
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
@@ -204,11 +204,11 @@ void onDisplay()
 
   glVertexAttribPointer(
                         attribute_v_normal,
-                        3,
+                        4,
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        BUFFER_OFFSET(sizeof(float)*3)
+                        BUFFER_OFFSET(sizeof(float)*4)
                         );
   glEnableVertexAttribArray(attribute_v_normal);
 
@@ -218,7 +218,7 @@ void onDisplay()
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        BUFFER_OFFSET(sizeof(float)*6)
+                        BUFFER_OFFSET(sizeof(float)*8)
                         );
   glEnableVertexAttribArray(attribute_v_color);
 
