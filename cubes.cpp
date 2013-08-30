@@ -34,7 +34,7 @@ int init_resources(void)
   // makeCellComplex(cells);
   // surfaceNets(cells, dimensions, vertices, indices);
 
-  // for(int i=0; i<size; i++) {
+  // for (int i=0; i<size; i++) {
   //   fprintf(stderr, "%i, ", volume[i]);
   // }
 
@@ -185,7 +185,7 @@ void onReshape(int width, int height) {
 
 void onDisplay()
 {
-  glClearColor(0.0, 0.0, 0.0, 1.0);
+  glClearColor(0.8, 0.8, 0.8, 1.0);
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
   glUseProgram(program);
@@ -280,26 +280,45 @@ int main(int argc, char* argv[])
   glutInitWindowSize(screen_width, screen_height);
   window = glutCreateWindow("Cube Engine");
 
-  GLenum glew_status = glewInit();
-  if (glew_status != GLEW_OK)
-    {
-      return EXIT_FAILURE;
+  int l;
+  for (int i=1; i<argc; i++) {
+    switch ((int)argv[i][0]) {
+      case '-':
+        l = strlen(argv[i]);
+        for (int n=1; n<l; ++n) {
+          switch( (int)argv[i][n] ) {
+            case 'v':
+              fprintf(stderr, "Cubes version 0.01\nOpenGL version %s\n", glGetString(GL_VERSION));
+              break;
+            default:
+              fprintf(stderr, "No code = %c\n", n);
+          }
+        }
+        break;
+      default:
+        fprintf(stderr, "No option = %s\n", argv[i]);
+        break;
     }
+  }
 
-  if (1 == init_resources())
-    {
-      glutDisplayFunc(onDisplay);
-      glutIdleFunc(onIdle);
-      glutReshapeFunc(onReshape);
-      glEnable(GL_BLEND);
-      glEnable(GL_DEPTH_TEST);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      glutMouseFunc(onMouse);
-      glutMotionFunc(onMotion);
-      glutKeyboardFunc(keyboard);
-      glutMainLoop();
-    }
+  GLenum glew_status = glewInit();
+  if (glew_status != GLEW_OK) {
+    return EXIT_FAILURE;
+  }
+
+  if (1 == init_resources()) {
+    glutDisplayFunc(onDisplay);
+    glutIdleFunc(onIdle);
+    glutReshapeFunc(onReshape);
+    glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glutMouseFunc(onMouse);
+    glutMotionFunc(onMotion);
+    glutKeyboardFunc(keyboard);
+    glutMainLoop();
+  }
 
   free_resources();
 }
