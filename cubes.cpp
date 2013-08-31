@@ -7,7 +7,7 @@
 #include "utils/shader_utils.h"
 
 GLuint program, window;
-GLint attribute_v_coord, attribute_v_normal, attribute_v_color, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
+GLint attribute_v_coord, attribute_data, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
 GLuint ibo_elements, elementbuffer;
 std::vector<GLushort> indices;
 std::vector<Vertex> vertices;
@@ -23,11 +23,12 @@ int init_resources(void)
 
   // hill
   int l[] = { 0, 0, 0 };
-  int h[] = { 32, 32, 32 };
+  int h[] = { 2, 2, 2 };
   int dimensions[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
-  int size = dimensions[0]*dimensions[1]*dimensions[2];
-  int volume[size];
-  makeVoxels(l, h, hill_func, volume);
+  // int size = dimensions[0]*dimensions[1]*dimensions[2];
+  // int volume[size];
+  int volume[] = { 0, 1, 1, 1, 1, 1, 1, 1 };
+  // makeVoxels(l, h, cube_func, volume);
 
   // std::vector<float> cells
   // int dimensions[3] = { 32, 32, 32 };
@@ -40,13 +41,13 @@ int init_resources(void)
 
   struct timespec tsi, tsf;
   clock_gettime(CLOCK_MONOTONIC, &tsi);
-  greedyMesh(volume, dimensions, vertices, indices);
+  stupidMesh(volume, dimensions, vertices, indices);
   clock_gettime(CLOCK_MONOTONIC, &tsf);
 
   double elaps_s = difftime(tsf.tv_sec, tsi.tv_sec);
   long elaps_ns = tsf.tv_nsec - tsi.tv_nsec;
 
-  fprintf(stderr, "greedyMesh takes %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
+  fprintf(stderr, "stupidMesh took %lf s\n", elaps_s + ((double)elaps_ns) / 1.0e9);
 
   glGenBuffers(1, &ibo_elements);
   glBindBuffer(GL_ARRAY_BUFFER, ibo_elements);
@@ -80,16 +81,9 @@ int init_resources(void)
     return 0;
   }
 
-  attribute_name = "v_normal";
-  attribute_v_normal = glGetAttribLocation(program, attribute_name);
-  if (attribute_v_normal == -1) {
-    fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
-    return 0;
-  }
-
-  attribute_name = "v_color";
-  attribute_v_color = glGetAttribLocation(program, attribute_name);
-  if (attribute_v_color == -1) {
+  attribute_name = "data";
+  attribute_data = glGetAttribLocation(program, attribute_name);
+  if (attribute_data == -1) {
     fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
     return 0;
   }
@@ -203,24 +197,14 @@ void onDisplay()
   glEnableVertexAttribArray(attribute_v_coord);
 
   glVertexAttribPointer(
-                        attribute_v_normal,
-                        4,
+                        attribute_data,
+                        1,
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        BUFFER_OFFSET(sizeof(float)*4)
+                        BUFFER_OFFSET(sizeof(float)*3)
                         );
-  glEnableVertexAttribArray(attribute_v_normal);
-
-  glVertexAttribPointer(
-                        attribute_v_color,
-                        4,
-                        GL_FLOAT,
-                        GL_FALSE,
-                        sizeof(Vertex),
-                        BUFFER_OFFSET(sizeof(float)*8)
-                        );
-  glEnableVertexAttribArray(attribute_v_color);
+  glEnableVertexAttribArray(attribute_data);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
   int size; glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
@@ -232,8 +216,7 @@ void onDisplay()
 void free_resources()
 {
   glDisableVertexAttribArray(attribute_v_coord);
-  glDisableVertexAttribArray(attribute_v_normal);
-  glDisableVertexAttribArray(attribute_v_color);
+  glDisableVertexAttribArray(attribute_data);
   glDeleteProgram(program);
   glDeleteBuffers(1, &ibo_elements);
   glDeleteBuffers(1, &elementbuffer);
