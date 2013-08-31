@@ -29,23 +29,36 @@ void stupidMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
                 p1 = glm::vec3(t[0]+u[0]+v[0], t[1]+u[1]+v[1], t[2]+u[2]+v[2]);
                 p4 = glm::vec3(t[0]+v[0], t[1]+v[1], t[2]+v[2]);
               }
-              Vertex vertex1 = { p3.x, p3.y, p3.z, (int)d*2+s, 100, 1 };
+              if (d*2+s == 0) {
+                normal = glm::vec3(1.0, 0.0, 0.0);
+              } else if(d*2+s == 1) {
+                normal = glm::vec3(0.0, 1.0, 0.0);
+              } else if(d*2+s == 2) {
+                normal = glm::vec3(0.0, 0.0, 1.0);
+              } else if(d*2+s == 3) {
+                normal = glm::vec3(-1.0, 0.0, 0.0);
+              } else if(d*2+s == 4) {
+                normal = glm::vec3(0.0, -1.0, 0.0);
+              } else if(d*2+s == 5) {
+                normal = glm::vec3(0.0, 0.0, -1.0);
+              }
+              Vertex vertex1 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, 100.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex1);
-              Vertex vertex2 = { p2.x, p2.y, p2.z, (int)d*2+s, 100, 1 };
+              Vertex vertex2 = { p2.x, p2.y, p2.z, 1.0, normal.x, normal.y, normal.z, 100.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex2);
-              Vertex vertex3 = { p1.x, p1.y, p1.z, (int)d*2+s, 100, 1 };
+              Vertex vertex3 = { p1.x, p1.y, p1.z, 1.0, normal.x, normal.y, normal.z, 100.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex3);
 
-              Vertex vertex4 = { p4.x, p4.y, p4.z, (int)d*2+s, 100, 1 };
+              Vertex vertex4 = { p4.x, p4.y, p4.z, 1.0, normal.x, normal.y, normal.z, 100.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex4);
-              Vertex vertex5 = { p3.x, p3.y, p3.z, (int)d*2+s, 100, 1 };
+              Vertex vertex5 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, 100.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex5);
-              Vertex vertex6 = { p1.x, p1.y, p1.z, (int)d*2+s, 100, 1 };
+              Vertex vertex6 = { p1.x, p1.y, p1.z, 1.0, normal.x, normal.y, normal.z, 100.0 };
               indices.push_back(vertices.size());
               vertices.push_back(vertex6);
             }

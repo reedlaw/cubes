@@ -17,10 +17,8 @@
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 struct Vertex{
-  float x, y, z;        // Vertex coordinates
-  int side;             // Side: 0=left, 1=right, 2=bottom, 3=top, 4=front, 5=rear
-  int ao;               // Ambient occlusion
-  int type;             // Material type
+  float x, y, z, w;        // Vertex coordinates
+  float nx, ny, nz, nw;
 };
 
 bool is_near(float v1, float v2);

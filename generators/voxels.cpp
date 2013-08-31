@@ -29,7 +29,7 @@ int hole_func(int i, int j, int k) {
 }
 
 int sphere_func(int i, int j, int k) {
-  return i*i+j*j+k*k <= 2*2 ? 2 : 0;
+  return i*i+j*j+k*k <= 2*2 ? 1 : 0;
 }
 
 int hill_func(int i, int j, int k) {

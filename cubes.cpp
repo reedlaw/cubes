@@ -7,7 +7,7 @@
 #include "utils/shader_utils.h"
 
 GLuint program, window;
-GLint attribute_v_coord, attribute_data, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
+GLint attribute_v_coord, attribute_v_normal, uniform_m, uniform_v, uniform_p, uniform_v_inv, uniform_m_3x3_inv_transp;
 GLuint ibo_elements, elementbuffer;
 std::vector<GLushort> indices;
 std::vector<Vertex> vertices;
@@ -28,7 +28,7 @@ int init_resources(void)
   // int size = dimensions[0]*dimensions[1]*dimensions[2];
   // int volume[size];
   int volume[] = { 0, 1, 1, 1, 1, 1, 1, 1 };
-  // makeVoxels(l, h, cube_func, volume);
+  // makeVoxels(l, h, hill_func, volume);
 
   // std::vector<float> cells
   // int dimensions[3] = { 32, 32, 32 };
@@ -81,9 +81,9 @@ int init_resources(void)
     return 0;
   }
 
-  attribute_name = "data";
-  attribute_data = glGetAttribLocation(program, attribute_name);
-  if (attribute_data == -1) {
+  attribute_name = "v_normal";
+  attribute_v_normal = glGetAttribLocation(program, attribute_name);
+  if (attribute_v_normal == -1) {
     fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
     return 0;
   }
@@ -142,7 +142,7 @@ glm::vec3 get_arcball_vector(int x, int y)
 }
 
 void onIdle() {
-  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(0.5f));
+  glm::mat4 scale = glm::scale(glm::mat4(1.0f),glm::vec3(2.5f));
   glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -12.0), glm::vec3(0.0, 1.0, 0.0));
   glm::mat4 projection = glm::perspective(41.0f, 1.0f*screen_width/screen_height, 1.0f, 100.0f);
 
@@ -197,14 +197,14 @@ void onDisplay()
   glEnableVertexAttribArray(attribute_v_coord);
 
   glVertexAttribPointer(
-                        attribute_data,
-                        1,
+                        attribute_v_normal,
+                        4,
                         GL_FLOAT,
                         GL_FALSE,
                         sizeof(Vertex),
-                        BUFFER_OFFSET(sizeof(float)*3)
+                        BUFFER_OFFSET(sizeof(float)*4)
                         );
-  glEnableVertexAttribArray(attribute_data);
+  glEnableVertexAttribArray(attribute_v_normal);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
   int size; glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
@@ -216,7 +216,7 @@ void onDisplay()
 void free_resources()
 {
   glDisableVertexAttribArray(attribute_v_coord);
-  glDisableVertexAttribArray(attribute_data);
+  glDisableVertexAttribArray(attribute_v_normal);
   glDeleteProgram(program);
   glDeleteBuffers(1, &ibo_elements);
   glDeleteBuffers(1, &elementbuffer);

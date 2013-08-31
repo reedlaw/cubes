@@ -1,7 +1,7 @@
 #version 120
 
-attribute vec3 v_coord;
-attribute vec3 data;
+attribute vec4 v_coord;
+attribute vec4 v_normal;
 uniform mat4 m, v, p;
 uniform mat3 m_3x3_inv_transp;
 uniform mat4 v_inv;
@@ -26,7 +26,7 @@ lightSource light0 = lightSource(
   180.0, 0.0,
   vec3(-1.0, 0.0, 0.0)
 );
-vec4 scene_ambient = vec4(0.4, 0.4, 0.4, 1.0);
+vec4 scene_ambient = vec4(0.8, 0.8, 0.8, 1.0);
 
 struct material
 {
@@ -36,33 +36,19 @@ struct material
   float shininess;
 };
 material mymaterial = material(
-  vec4(0.8, 0.0, 0.0, 1.0),
-  vec4(0.4, 0.4, 0.4, 1.0),
+  vec4(0.8, 0.8, 0.8, 1.0),
+  vec4(0.8, 0.8, 0.8, 1.0),
   vec4(1.0, 1.0, 1.0, 1.0),
   5.0
 );
 
 void main(void)
 {
-  ambientOcclusion = data.y / 255.0;
-  float side = data.x;
-  if(side == 0) {
-    normal = vec3(1.0, 0.0, 0.0);
-  } else if(side == 1) {
-    normal = vec3(0.0, 1.0, 0.0);
-  } else if(side == 2) {
-    normal = vec3(0.0, 0.0, 1.0);
-  } else if(side == 3) {
-    normal = vec3(-1.0, 0.0, 0.0);
-  } else if(side == 4) {
-    normal = vec3(0.0, -1.0, 0.0);
-  } else if(side == 5) {
-    normal = vec3(0.0, 0.0, -1.0);
-  }
+  ambientOcclusion = v_normal.w / 255.0;
 
   mat4 mvp = p*v*m;
-  vec3 normalDirection = normalize(m_3x3_inv_transp * normal);
-  vec3 viewDirection = normalize(vec3(v_inv * vec4(0.0, 0.0, 0.0, 1.0) - m * vec4(v_coord, 1.0)));
+  vec3 normalDirection = normalize(m_3x3_inv_transp * v_normal.xyz);
+  vec3 viewDirection = normalize(vec3(v_inv * vec4(0.0, 0.0, 0.0, 1.0) - m * v_coord));
   vec3 lightDirection;
   float attenuation;
 
@@ -73,7 +59,7 @@ void main(void)
     }
   else // point or spot light (or other kind of light)
     {
-      vec3 vertexToLightSource = vec3(light0.position - m * vec4(v_coord, 1.0));
+      vec3 vertexToLightSource = vec3(light0.position - m * v_coord);
       float distance = length(vertexToLightSource);
       lightDirection = normalize(vertexToLightSource);
       attenuation = 1.0 / (light0.constantAttenuation
@@ -112,6 +98,7 @@ void main(void)
               mymaterial.shininess);
     }
 
+  normal = v_normal.xyz;
   color = vec4(ambientLighting + diffuseReflection + specularReflection, 1.0);
-  gl_Position = mvp * vec4(v_coord, 1.0);
+  gl_Position = mvp * v_coord;
 }
