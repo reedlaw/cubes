@@ -1,5 +1,14 @@
 #include "voxels.h"
 
+int findVoxel(int i, int j, int k, int *volume, int *dimensions) {
+  if (i < 0 || i >= dimensions[0] || j < 0 || j >= dimensions[1] || k < 0 || k >= dimensions[2]) {
+    return false;
+  } else {
+    int index = i + (dimensions[1] * j) + (dimensions[0] * dimensions[1] * k);
+    return volume[index];
+  }
+}
+
 void makeVoxels(int *l, int *h, int (*f)(int, int, int), int *volume) {
   int n = 0;
   for(int k=l[2]; k<h[2]; k++) {
@@ -13,11 +22,7 @@ void makeVoxels(int *l, int *h, int (*f)(int, int, int), int *volume) {
 }
 
 int cube_func(int i, int j, int k) {
-  if (i<2) {
-    return 1;
-  } else {
-    return 2;
-  }
+  return 1;
 }
 
 int hole_func(int i, int j, int k) {

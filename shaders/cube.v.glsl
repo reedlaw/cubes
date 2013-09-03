@@ -26,7 +26,7 @@ lightSource light0 = lightSource(
   180.0, 0.0,
   vec3(-1.0, 0.0, 0.0)
 );
-vec4 scene_ambient = vec4(0.8, 0.8, 0.8, 1.0);
+vec4 scene_ambient = vec4(0.4, 0.4, 0.4, 1.0);
 
 struct material
 {
@@ -44,7 +44,7 @@ material mymaterial = material(
 
 void main(void)
 {
-  ambientOcclusion = v_normal.w / 255.0;
+  ambientOcclusion = v_normal.w / 4.0;
 
   mat4 mvp = p*v*m;
   vec3 normalDirection = normalize(m_3x3_inv_transp * v_normal.xyz);

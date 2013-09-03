@@ -4,10 +4,6 @@ bool is_near(float v1, float v2){
   return fabs(v1-v2) < 0.01f;
 }
 
-int findVoxel(int i, int j, int k, int *volume, int *dimensions) {
-  return volume[i + dimensions[0] * (j + dimensions[1] * k)];
-}
-
 void greedyMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, std::vector<GLushort> & indices)
 {
   glm::vec3 p1, p2, p3, p4, vecU, vecV, normal;

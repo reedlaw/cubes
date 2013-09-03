@@ -21,14 +21,13 @@ int init_resources(void)
 {
   PreviousClock = glutGet(GLUT_ELAPSED_TIME);
 
-  // hill
   int l[] = { 0, 0, 0 };
-  int h[] = { 2, 2, 2 };
+  int h[] = { 4, 4, 4 };
   int dimensions[] = { (h[0]-l[0]), (h[1]-l[1]), (h[2]-l[2]) };
-  // int size = dimensions[0]*dimensions[1]*dimensions[2];
-  // int volume[size];
-  int volume[] = { 0, 1, 1, 1, 1, 1, 1, 1 };
-  // makeVoxels(l, h, hill_func, volume);
+  int size = dimensions[0]*dimensions[1]*dimensions[2];
+  // int volume[size];0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0,0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0
+  int volume[] = { 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 };
+  // makeVoxels(l, h, hole_func, volume);
 
   // std::vector<float> cells
   // int dimensions[3] = { 32, 32, 32 };
