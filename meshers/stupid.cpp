@@ -133,7 +133,7 @@ void stupidMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
 
               } else if(d*2+s == 3) { // top
 
-                normal = glm::vec3(-1.0, 0.0, 0.0);
+                normal = glm::vec3(1.0, 0.0, 0.0);
 
                 side1 = false; side2 = false; center = false;
                 if (findVoxel(q[0], q[1]+1, q[2]+1, volume, dimensions)) { side1 = true; }
@@ -160,7 +160,7 @@ void stupidMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
                 ao4 = vertexAO(side1, side2, center); // 3
 
               } else if(d*2+s == 4) { // back
-                normal = glm::vec3(0.0, -1.0, 0.0);
+                normal = glm::vec3(0.0, 1.0, 0.0);
 
                 side1 = false; side2 = false; center = false;
                 if (findVoxel(q[0]-1, q[1], q[2]-1, volume, dimensions)) { side1 = true; }
@@ -188,7 +188,7 @@ void stupidMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
 
               } else if(d*2+s == 5) { // front
 
-                normal = glm::vec3(0.0, 0.0, -1.0);
+                normal = glm::vec3(0.0, 0.0, 1.0);
 
                 side1 = false; side2 = false; center = false;
                 if (findVoxel(q[0]+1, q[1], q[2]+1, volume, dimensions)) { side1 = true; }
@@ -215,10 +215,6 @@ void stupidMesh(int *volume, int *dimensions, std::vector<Vertex> & vertices, st
                 ao4 = vertexAO(side1, side2, center); // 3
 
               }
-
-              // if (q[0] = 1 && q[1] == 0 && q[2] == 1) {
-              //     ao1 = 4; ao2 = 2; ao3 = 1; ao4 = 3;
-              //   }
 
               Vertex vertex1 = { p3.x, p3.y, p3.z, 1.0, normal.x, normal.y, normal.z, ao3 };
               indices.push_back(vertices.size());

@@ -26,7 +26,7 @@ int cube_func(int i, int j, int k) {
 }
 
 int hole_func(int i, int j, int k) {
-  if (abs(i-4) > 2 || abs(j-4) > 2) {
+  if (abs(i-3) > 2 || abs(j-3) > 2) {
     return 1;
   } else {
     return false;
@@ -38,7 +38,7 @@ int sphere_func(int i, int j, int k) {
 }
 
 int hill_func(int i, int j, int k) {
-  if (j <= 32 * exp(-(i*i + k*k) / 512.0)) {
+  if (j <= 16 * exp(-(i*i + k*k) / 256.0)) {
     return 1;
   } else {
     return 0;

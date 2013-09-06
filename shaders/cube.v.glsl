@@ -99,6 +99,7 @@ void main(void)
     }
 
   normal = v_normal.xyz;
+  // normal = normalize (v_normal.xyz), v_normal.w;
   color = vec4(ambientLighting + diffuseReflection + specularReflection, 1.0);
   gl_Position = mvp * v_coord;
 }
